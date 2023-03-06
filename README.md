@@ -1,7 +1,7 @@
 # json-plus
 JSON parser and encoder.
 
-You do not need to compile anything to use json-plus, just include **`json-plus.cpp`** and **`json-plus.h in your application.
+You do not need to compile anything to use json-plus, just include **`json-plus.cpp`** and **`json-plus.h`** in your application.
 Everything is contained in the **`json-plus`** namespace.
 
 Check **`example.cpp`** for a detailed example that creates a json string, parses it and prints some details to the console.
