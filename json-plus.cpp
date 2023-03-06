@@ -1808,10 +1808,12 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 // ----------------------------- //
 
 JSON_OBJECT::JSON_OBJECT() {
+	this->count = 0;
 	this->json_root = NULL;
 }
 
 JSON_OBJECT::JSON_OBJECT(JSON_NODE* root) {
+	this->count = 0;
 	this->json_root = root;
 }
 
@@ -1832,6 +1834,26 @@ bool JSON_OBJECT::Empty() {
 	else {
 		return true;
 	}
+}
+
+ULONG JSON_OBJECT::Count()
+{
+	if (this->count != 0) {
+		return this->count;
+	}
+	else if (this->json_root != NULL)
+	{
+		JSON_NODE* node;
+
+		node = (JSON_NODE*)this->json_root->value;
+		while (node != NULL)
+		{
+			node = node->next;
+			this->count++;
+		}
+	}
+
+	return this->count;
 }
 
 JSON_OBJECT JSON_OBJECT::Object(const CHAR* key)

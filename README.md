@@ -2,7 +2,7 @@
 JSON parser and encoder.
 
 You do not need to compile anything to use json-plus, just include **`json-plus.cpp`** and **`json-plus.h`** in your application.
-Everything is contained in the **`json-plus`** namespace.
+Everything is contained in the **`json_plus`** namespace.
 
 Check **`example.cpp`** for a detailed example that creates a json string, parses it and prints some details to the console.
 
@@ -23,12 +23,14 @@ You can use the JSON_OBJECT and JSON_ARRAY classes instead of using the JSON_Get
 Here is a simple example:
 ```
 JSON_PARSER_CONTEXT context;
+const CHAR* json_string = "{ \"username\":\"John\", \"password\":\"1234\" }";
 JSON_OBJECT json_file = JSON_Parse(json_string, &context);
 const CHAR* username = json_file.String("username");
 ```
 
 Members:
 - Empty
+- Count
 - Object
 - Array
 - String

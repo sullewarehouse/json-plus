@@ -176,6 +176,8 @@ namespace json_plus
 	private:
 		// Object root node
 		JSON_NODE* json_root;
+		// Number of items in the object
+		ULONG count;
 	public:
 		// Default initializer
 		JSON_OBJECT();
@@ -187,6 +189,8 @@ namespace json_plus
 		operator JSON_NODE* () const;
 		// Check if the object exists
 		bool Empty();
+		// Get the number of items in the object
+		ULONG Count();
 		// Get an object from the object using a key
 		JSON_OBJECT Object(const CHAR* key);
 		// Get an array from the object using a key

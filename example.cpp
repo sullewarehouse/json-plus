@@ -48,7 +48,7 @@ CHAR* create_json_string()
 		random_numbers.Insert.Number.Int(rand());
 		random_numbers.Insert.Number.Int(rand());
 
-		// Override the format for the array so its on a single line
+		// Override the format so the "random_numbers" array is on a single line
 		random_numbers.FormatOverride("");
 
 		// Add settings object
