@@ -83,6 +83,11 @@ int wmain()
 
 	// Parse the json string
 	JSON_OBJECT json_file = JSON_Parse(json_string, &context);
+	if (context.errorCode != JSON_ERROR_CODE::NONE) {
+		JSON_Free(json_file);
+		printf("%s\n", context.errorDescription);
+		return -1;
+	}
 
 	// Check if the object exists
 	if (!json_file.Empty())
@@ -118,4 +123,7 @@ int wmain()
 
 	// Free json string
 	free(json_string);
+
+	// Exit
+	return 0;
 }

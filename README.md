@@ -1,5 +1,5 @@
 # json-plus
-JSON parser and encoder.
+JSON parser and encoder with UTF8 support.
 
 You do not need to compile anything to use json-plus, just include **`json-plus.cpp`** and **`json-plus.h`** in your application.
 Everything is contained in the **`json_plus`** namespace.
