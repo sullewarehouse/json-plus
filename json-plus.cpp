@@ -2192,7 +2192,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Double(const char* key, double value)
 		}
 
 		UTF8_Encoding::StringCopy(number_key, keyLength, key);
-		sprintf_s(number_value, 128, "%f", value);
+		snprintf(number_value, 128, "%f", value);
 
 		node->key = number_key;
 		node->value = number_value;
@@ -2228,7 +2228,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Int(const char* key, int value)
 		}
 
 		UTF8_Encoding::StringCopy(number_key, keyLength, key);
-		sprintf_s(number_value, 32, "%d", value);
+		snprintf(number_value, 32, "%d", value);
 
 		node->key = number_key;
 		node->value = number_value;
@@ -2264,7 +2264,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Long(const char* key, long value)
 		}
 
 		UTF8_Encoding::StringCopy(number_key, keyLength, key);
-		sprintf_s(number_value, 32, "%d", value);
+		snprintf(number_value, 32, "%d", value);
 
 		node->key = number_key;
 		node->value = number_value;
@@ -2300,7 +2300,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Int64(const char* key, long long value)
 		}
 
 		UTF8_Encoding::StringCopy(number_key, keyLength, key);
-		sprintf_s(number_value, 64, "%lld", value);
+		snprintf(number_value, 64, "%lld", value);
 
 		node->key = number_key;
 		node->value = number_value;
@@ -2685,7 +2685,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Double(double value)
 			return NULL;
 		}
 
-		sprintf_s(number_value, 128, "%f", value);
+		snprintf(number_value, 128, "%f", value);
 
 		node->key = NULL;
 		node->value = number_value;
@@ -2712,7 +2712,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Int(int value)
 			return NULL;
 		}
 
-		sprintf_s(number_value, 32, "%d", value);
+		snprintf(number_value, 32, "%d", value);
 
 		node->key = NULL;
 		node->value = number_value;
@@ -2739,7 +2739,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Long(long value)
 			return NULL;
 		}
 
-		sprintf_s(number_value, 32, "%d", value);
+		snprintf(number_value, 32, "%d", value);
 
 		node->key = NULL;
 		node->value = number_value;
@@ -2766,7 +2766,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Int64(long long value)
 			return NULL;
 		}
 
-		sprintf_s(number_value, 64, "%lld", value);
+		snprintf(number_value, 64, "%lld", value);
 
 		node->key = NULL;
 		node->value = number_value;

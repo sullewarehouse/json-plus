@@ -52,8 +52,7 @@ char* create_json_string()
 
 		// Add settings object
 		JSON_OBJECT settings = json_file.Insert.Object("settings");
-		settings.Insert.String("path", "C:\\json_files");
-		settings.Insert.Number.Int("priority", 1);
+		settings.Insert.String("path", "C:\\json_files\\console\\users.txt");
 
 		// Add basic info
 		json_file.Insert.Boolean("encrypted", true);
@@ -93,11 +92,17 @@ int wmain()
 	{
 		// Get json members
 		const char* type = json_file.String("type");
-		int count = json_file.Number.Long("count");
+		long count = json_file.Number.Long("count");
 		bool encrypted = json_file.Boolean("encrypted");
 
+		const char* path = NULL;
+		JSON_OBJECT settings = json_file.Object("settings");
+		if (!settings.Empty()) {
+			path = settings.String("path");
+		}
+
 		// Print members
-		printf("type: %s\ncount: %d\nencrypted: %s\n\n", type, count, encrypted ? "true" : "false");
+		printf("type: %s\ncount: %d\nencrypted: %s\npath: %s\n", type, count, encrypted ? "true" : "false", path);
 
 		// Get users array from the object
 		JSON_ARRAY users = json_file.Array("users");
