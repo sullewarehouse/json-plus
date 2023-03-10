@@ -12,15 +12,17 @@
 
 #include <stdio.h>
 #include <setjmp.h>
+#include <stdlib.h>
+#include <memory.h>
 
 #include "json-plus.h"
 using namespace json_plus;
 
-// The number of 'CHAR' units to add to a string buffer size when the buffer is too small
+// The number of 'char' units to add to a string buffer size when the buffer is too small
 // Increasing this number may result in faster parsing but will use more memory
 #define JSON_PARSER_BUFFER_INCREASE 32
 
-// The number of 'CHAR' units to add to the generator buffer size when the buffer is too small
+// The number of 'char' units to add to the generator buffer size when the buffer is too small
 // Increasing this number may result in faster encoding but will use more memory
 #define JSON_GENERATOR_BUFFER_INCREASE 32
 
@@ -28,16 +30,16 @@ using namespace json_plus;
 struct JSON_GENERATOR_CONTEXT
 {
 	bool error;
-	CHAR* buffer;
+	char* buffer;
 	size_t bufferLength;
 	size_t index;
-	const CHAR* format;
+	const char* format;
 	long indentation;
 	jmp_buf env;
 };
 
 // JSON error strings
-static const CHAR* JSON_ERROR_STRINGS[] =
+static const char* JSON_ERROR_STRINGS[] =
 {
 	"None.",
 	"invalid paramter.",
@@ -92,13 +94,13 @@ void json_GeneratorIndentation(JSON_GENERATOR_CONTEXT* context);
 
 // Append a new character to the JSON string buffer
 // If `format` is true then the function checks formatting parameters
-void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, ULONG CodePoint, bool format)
+void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, unsigned long CodePoint, bool format)
 {
-	UCHAR CharUnits;
-	const CHAR* pFormatString;
-	ULONG FormatChar;
-	UCHAR FormatCharUnits;
-	ULONG newLines;
+	unsigned char CharUnits;
+	const char* pFormatString;
+	unsigned long FormatChar;
+	unsigned char FormatCharUnits;
+	unsigned long newLines;
 
 	pFormatString = NULL;
 	FormatChar = 0;
@@ -122,7 +124,7 @@ void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, ULONG CodePoint, bool
 				newLines++;
 			}
 			else if (FormatChar == CodePoint) {
-				for (ULONG i = 0; i < newLines; i++) {
+				for (unsigned long i = 0; i < newLines; i++) {
 					json_GeneratorAppend(context, '\n', false);
 					json_GeneratorIndentation(context);
 				}
@@ -142,7 +144,7 @@ void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, ULONG CodePoint, bool
 	if ((context->index + CharUnits + 1) >= context->bufferLength)
 	{
 		context->bufferLength += JSON_GENERATOR_BUFFER_INCREASE;
-		CHAR* pNewBuffer = (CHAR*)realloc(context->buffer, context->bufferLength);
+		char* pNewBuffer = (char*)realloc(context->buffer, context->bufferLength);
 		if (pNewBuffer != NULL) {
 			context->buffer = pNewBuffer;
 		}
@@ -174,7 +176,7 @@ void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, ULONG CodePoint, bool
 					newLines++;
 				}
 				else {
-					for (ULONG i = 0; i < newLines; i++) {
+					for (unsigned long i = 0; i < newLines; i++) {
 						json_GeneratorAppend(context, '\n', false);
 						json_GeneratorIndentation(context);
 					}
@@ -196,12 +198,12 @@ void json_GeneratorIndentation(JSON_GENERATOR_CONTEXT* context)
 }
 
 // Recursive JSON text generator (from node)
-CHAR* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
+char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 {
-	UCHAR CharUnits;
-	ULONG CodePoint;
+	unsigned char CharUnits;
+	unsigned long CodePoint;
 	JSON_NODE* node;
-	const CHAR* format;
+	const char* format;
 
 	node = json_node;
 	while (node != NULL)
@@ -210,7 +212,7 @@ CHAR* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 		{
 			json_GeneratorAppend(context, '"', true);
 
-			const CHAR* pKey = node->key;
+			const char* pKey = node->key;
 			CharUnits = UTF8_Encoding::GetCharacterUnits(*pKey);
 			CodePoint = UTF8_Encoding::Decode(CharUnits, pKey);
 
@@ -280,7 +282,7 @@ CHAR* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 		{
 			json_GeneratorAppend(context, '"', true);
 
-			const CHAR* pValue = (const CHAR*)node->value;
+			const char* pValue = (const char*)node->value;
 			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
 			CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
 
@@ -314,7 +316,7 @@ CHAR* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 		}
 		else if (node->type == JSON_TYPE::NUMBER)
 		{
-			const CHAR* pValue = (const CHAR*)node->value;
+			const char* pValue = (const char*)node->value;
 			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
 			CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
 
@@ -361,33 +363,33 @@ CHAR* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 // ------------------------------ //
 
 // Parse JSON string
-CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+char* json_ParseString(char** pp_json, JSON_PARSER_CONTEXT* context);
 
 // Parse JSON number
-CHAR* json_ParseNumber(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+char* json_ParseNumber(char** pp_json, JSON_PARSER_CONTEXT* context);
 
 // Parse JSON boolean
-bool json_ParseBoolean(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context);
 
 // Parse JSON null
-void json_ParseNULL(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+void json_ParseNULL(char** pp_json, JSON_PARSER_CONTEXT* context);
 
 // Parse JSON array
-JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context);
 
 // Parse JSON object
-JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context);
 
 // --------------------------------------- //
 // **   Internal JSON parse functions   ** //
 // --------------------------------------- //
 
 // Get the next token in the JSON string
-JSON_TOKEN json_GetToken(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+JSON_TOKEN json_GetToken(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
-	const CHAR* pJson;
-	UCHAR CharUnits;
-	ULONG CodePoint;
+	const char* pJson;
+	unsigned char CharUnits;
+	unsigned long CodePoint;
 	JSON_TOKEN token;
 
 	pJson = *pp_json;
@@ -483,22 +485,22 @@ getCodePoint:
 		token = JSON_TOKEN::JSON_END;
 	}
 
-	*pp_json = (CHAR*)pJson;
+	*pp_json = (char*)pJson;
 
 	return token;
 }
 
 // Parse a JSON string (key or value)
-CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+char* json_ParseString(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
 	size_t i;
-	UCHAR CharUnits;
-	ULONG CodePoint;
-	const CHAR* pJson;
+	unsigned char CharUnits;
+	unsigned long CodePoint;
+	const char* pJson;
 	bool bEscape;
-	CHAR* buffer;
+	char* buffer;
 	size_t bufferLength;
-	CHAR* pNewBuffer;
+	char* pNewBuffer;
 
 	pJson = *pp_json;
 	bEscape = false;
@@ -508,7 +510,7 @@ CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 	// Allocating here makes the compiler happy but is not actually needed
 	bufferLength = JSON_PARSER_BUFFER_INCREASE;
-	buffer = (CHAR*)malloc(bufferLength);
+	buffer = (char*)malloc(bufferLength);
 	if (buffer == NULL) {
 		context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
 		context->errorDescription = JSON_ERROR_STRINGS[(int)context->errorCode];
@@ -567,7 +569,7 @@ CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 		if ((i + CharUnits + 1) > bufferLength)
 		{
 			bufferLength += JSON_PARSER_BUFFER_INCREASE;
-			pNewBuffer = (CHAR*)realloc(buffer, bufferLength);
+			pNewBuffer = (char*)realloc(buffer, bufferLength);
 			if (pNewBuffer != NULL) {
 				buffer = pNewBuffer;
 			}
@@ -593,19 +595,19 @@ CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 	}
 
 	buffer[i] = '\0';
-	*pp_json = (CHAR*)pJson;
+	*pp_json = (char*)pJson;
 
 	return buffer;
 }
 
 // Parse a JSON number, we return the number as an individual string to avoid type assumptions
-CHAR* json_ParseNumber(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+char* json_ParseNumber(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
-	UCHAR CharUnits;
-	ULONG CodePoint;
-	const CHAR* pJson;
+	unsigned char CharUnits;
+	unsigned long CodePoint;
+	const char* pJson;
 	size_t strLen;
-	CHAR* result;
+	char* result;
 
 	pJson = *pp_json;
 
@@ -622,7 +624,7 @@ CHAR* json_ParseNumber(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 		context->charNumber++;
 	}
 
-	result = (CHAR*)malloc(strLen + 1);
+	result = (char*)malloc(strLen + 1);
 	if (result == 0) {
 		return 0;
 	}
@@ -636,11 +638,11 @@ CHAR* json_ParseNumber(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 }
 
 // Parse a JSON boolean, lowercase and uppercase supported
-bool json_ParseBoolean(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
-	UCHAR CharUnits;
-	ULONG CodePoint;
-	const CHAR* pJson;
+	unsigned char CharUnits;
+	unsigned long CodePoint;
+	const char* pJson;
 	bool result;
 
 	pJson = *pp_json;
@@ -723,7 +725,7 @@ bool json_ParseBoolean(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 		context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE];
 	}
 
-	*pp_json = (CHAR*)pJson;
+	*pp_json = (char*)pJson;
 
 	return result;
 
@@ -734,11 +736,11 @@ syntax_error:
 }
 
 // Parse a JSON null value
-void json_ParseNULL(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+void json_ParseNULL(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
-	UCHAR CharUnits;
-	ULONG CodePoint;
-	const CHAR* pJson;
+	unsigned char CharUnits;
+	unsigned long CodePoint;
+	const char* pJson;
 
 	pJson = *pp_json;
 
@@ -775,7 +777,7 @@ void json_ParseNULL(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 		pJson += CharUnits;
 	}
 
-	*pp_json = (CHAR*)pJson;
+	*pp_json = (char*)pJson;
 
 	return;
 
@@ -785,11 +787,11 @@ syntax_error:
 }
 
 // Parse a JSON array
-JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
 	JSON_TOKEN token;
 	JSON_NODE* root, * node, * prev_node;
-	const CHAR* pJson;
+	const char* pJson;
 	bool hasCompleted;
 
 	root = node = prev_node = 0;
@@ -799,7 +801,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 	while (!hasCompleted)
 	{
-		token = json_GetToken((CHAR**)&pJson, context);
+		token = json_GetToken((char**)&pJson, context);
 
 		switch (token)
 		{
@@ -822,7 +824,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 				memset(node, 0, sizeof(JSON_NODE));
 				node->type = JSON_TYPE::OBJECT;
-				node->value = json_ParseObject((CHAR**)&pJson, context);
+				node->value = json_ParseObject((char**)&pJson, context);
 				node->format = NULL;
 
 				if (prev_node) {
@@ -857,7 +859,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 				memset(node, 0, sizeof(JSON_NODE));
 				node->type = JSON_TYPE::STRING;
-				node->value = json_ParseString((CHAR**)&pJson, context);
+				node->value = json_ParseString((char**)&pJson, context);
 				node->format = NULL;
 
 				if (prev_node) {
@@ -884,7 +886,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 				memset(node, 0, sizeof(JSON_NODE));
 				node->type = JSON_TYPE::NUMBER;
-				node->value = json_ParseNumber((CHAR**)&pJson, context);
+				node->value = json_ParseNumber((char**)&pJson, context);
 				node->format = NULL;
 
 				if (prev_node) {
@@ -911,7 +913,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 				memset(node, 0, sizeof(JSON_NODE));
 				node->type = JSON_TYPE::ARRAY;
-				node->value = json_ParseArray((CHAR**)&pJson, context);
+				node->value = json_ParseArray((char**)&pJson, context);
 				node->format = NULL;
 
 				if (prev_node) {
@@ -945,7 +947,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 				memset(node, 0, sizeof(JSON_NODE));
 				node->type = JSON_TYPE::BOOLEAN;
-				node->value = (void*)json_ParseBoolean((CHAR**)&pJson, context);
+				node->value = (void*)json_ParseBoolean((char**)&pJson, context);
 				node->format = NULL;
 
 				if (prev_node) {
@@ -972,7 +974,7 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 				memset(node, 0, sizeof(JSON_NODE));
 				node->type = JSON_TYPE::NULL_TYPE;
-				json_ParseNULL((CHAR**)&pJson, context);
+				json_ParseNULL((char**)&pJson, context);
 				node->format = NULL;
 
 				if (prev_node) {
@@ -1002,17 +1004,17 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 		}
 	}
 
-	*pp_json = (CHAR*)pJson;
+	*pp_json = (char*)pJson;
 
 	return root;
 }
 
 // Parse a JSON object
-JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
+JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 {
 	JSON_TOKEN token;
 	JSON_NODE* root, * node, * prev_node;
-	const CHAR* pJson;
+	const char* pJson;
 	bool isKey;
 	bool hasCompleted;
 
@@ -1024,7 +1026,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 
 	while (!hasCompleted)
 	{
-		token = json_GetToken((CHAR**)&pJson, context);
+		token = json_GetToken((char**)&pJson, context);
 
 		switch (token)
 		{
@@ -1038,7 +1040,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 			else
 			{
 				node->type = JSON_TYPE::OBJECT;
-				node->value = json_ParseObject((CHAR**)&pJson, context);
+				node->value = json_ParseObject((char**)&pJson, context);
 			}
 			break;
 		case JSON_TOKEN::CURLY_CLOSE:
@@ -1051,7 +1053,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 			if (!isKey)
 			{
 				node->type = JSON_TYPE::STRING;
-				node->value = json_ParseString((CHAR**)&pJson, context);
+				node->value = json_ParseString((char**)&pJson, context);
 			}
 			else
 			{
@@ -1072,7 +1074,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 					}
 
 					memset(node, 0, sizeof(JSON_NODE));
-					node->key = json_ParseString((CHAR**)&pJson, context);
+					node->key = json_ParseString((char**)&pJson, context);
 					node->format = NULL;
 
 					if (prev_node) {
@@ -1091,7 +1093,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 			else
 			{
 				node->type = JSON_TYPE::NUMBER;
-				node->value = json_ParseNumber((CHAR**)&pJson, context);
+				node->value = json_ParseNumber((char**)&pJson, context);
 			}
 			break;
 		case JSON_TOKEN::ARRAY_OPEN:
@@ -1104,7 +1106,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 			else
 			{
 				node->type = JSON_TYPE::ARRAY;
-				node->value = json_ParseArray((CHAR**)&pJson, context);
+				node->value = json_ParseArray((char**)&pJson, context);
 			}
 			break;
 		case JSON_TOKEN::ARRAY_CLOSE:
@@ -1126,7 +1128,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 			else
 			{
 				node->type = JSON_TYPE::BOOLEAN;
-				node->value = (void*)json_ParseBoolean((CHAR**)&pJson, context);
+				node->value = (void*)json_ParseBoolean((char**)&pJson, context);
 			}
 			break;
 		case JSON_TOKEN::NULL_TYPE:
@@ -1139,7 +1141,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 			else
 			{
 				node->type = JSON_TYPE::NULL_TYPE;
-				json_ParseNULL((CHAR**)&pJson, context);
+				json_ParseNULL((char**)&pJson, context);
 			}
 			break;
 		case JSON_TOKEN::JSON_END:
@@ -1164,7 +1166,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 		}
 	}
 
-	*pp_json = (CHAR*)pJson;
+	*pp_json = (char*)pJson;
 
 	return root;
 }
@@ -1173,7 +1175,7 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 // **   JSON functions   ** //
 // ------------------------ //
 
-CHAR* json_plus::JSON_Generate(JSON_NODE* json_root, const CHAR* format)
+char* json_plus::JSON_Generate(JSON_NODE* json_root, const char* format)
 {
 	JSON_GENERATOR_CONTEXT context;
 
@@ -1209,7 +1211,7 @@ CHAR* json_plus::JSON_Generate(JSON_NODE* json_root, const CHAR* format)
 	return context.buffer;
 }
 
-JSON_NODE* json_plus::JSON_Parse(const CHAR* pJson, JSON_PARSER_CONTEXT* context)
+JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context)
 {
 	JSON_TOKEN token;
 	JSON_NODE* root, * node, * prev_node;
@@ -1238,7 +1240,7 @@ JSON_NODE* json_plus::JSON_Parse(const CHAR* pJson, JSON_PARSER_CONTEXT* context
 
 	while (!hasCompleted)
 	{
-		token = json_GetToken((CHAR**)&pJson, context);
+		token = json_GetToken((char**)&pJson, context);
 
 		switch (token)
 		{
@@ -1253,7 +1255,7 @@ JSON_NODE* json_plus::JSON_Parse(const CHAR* pJson, JSON_PARSER_CONTEXT* context
 
 			memset(node, 0, sizeof(JSON_NODE));
 			node->type = JSON_TYPE::OBJECT;
-			node->value = json_ParseObject((CHAR**)&pJson, context);
+			node->value = json_ParseObject((char**)&pJson, context);
 			node->format = NULL;
 
 			if (prev_node) {
@@ -1271,7 +1273,7 @@ JSON_NODE* json_plus::JSON_Parse(const CHAR* pJson, JSON_PARSER_CONTEXT* context
 
 			memset(node, 0, sizeof(JSON_NODE));
 			node->type = JSON_TYPE::ARRAY;
-			node->value = json_ParseArray((CHAR**)&pJson, context);
+			node->value = json_ParseArray((char**)&pJson, context);
 			node->format = NULL;
 
 			if (prev_node) {
@@ -1346,7 +1348,7 @@ void json_plus::JSON_Free(JSON_NODE* json_root)
 	}
 }
 
-JSON_NODE* json_plus::JSON_GetObject(JSON_NODE* object, const CHAR* key)
+JSON_NODE* json_plus::JSON_GetObject(JSON_NODE* object, const char* key)
 {
 	JSON_NODE* node;
 
@@ -1369,7 +1371,7 @@ JSON_NODE* json_plus::JSON_GetObject(JSON_NODE* object, const CHAR* key)
 	return NULL;
 }
 
-JSON_NODE* json_plus::JSON_GetArray(JSON_NODE* object, const CHAR* key)
+JSON_NODE* json_plus::JSON_GetArray(JSON_NODE* object, const char* key)
 {
 	JSON_NODE* node;
 
@@ -1392,7 +1394,7 @@ JSON_NODE* json_plus::JSON_GetArray(JSON_NODE* object, const CHAR* key)
 	return NULL;
 }
 
-CHAR* json_plus::JSON_GetString(JSON_NODE* object, const CHAR* key)
+char* json_plus::JSON_GetString(JSON_NODE* object, const char* key)
 {
 	JSON_NODE* node;
 
@@ -1406,7 +1408,7 @@ CHAR* json_plus::JSON_GetString(JSON_NODE* object, const CHAR* key)
 		if (node->type == JSON_TYPE::STRING)
 		{
 			if (UTF8_Encoding::CompareStrings(node->key, key) == 0) {
-				return (CHAR*)node->value;
+				return (char*)node->value;
 			}
 		}
 		node = node->next;
@@ -1415,7 +1417,7 @@ CHAR* json_plus::JSON_GetString(JSON_NODE* object, const CHAR* key)
 	return NULL;
 }
 
-CHAR* json_plus::JSON_GetNumber(JSON_NODE* object, const CHAR* key)
+char* json_plus::JSON_GetNumber(JSON_NODE* object, const char* key)
 {
 	JSON_NODE* node;
 
@@ -1429,7 +1431,7 @@ CHAR* json_plus::JSON_GetNumber(JSON_NODE* object, const CHAR* key)
 		if (node->type == JSON_TYPE::NUMBER)
 		{
 			if (UTF8_Encoding::CompareStrings(node->key, key) == 0) {
-				return (CHAR*)node->value;
+				return (char*)node->value;
 			}
 		}
 		node = node->next;
@@ -1438,7 +1440,7 @@ CHAR* json_plus::JSON_GetNumber(JSON_NODE* object, const CHAR* key)
 	return NULL;
 }
 
-bool json_plus::JSON_GetBoolean(JSON_NODE* object, const CHAR* key)
+bool json_plus::JSON_GetBoolean(JSON_NODE* object, const char* key)
 {
 	JSON_NODE* node;
 
@@ -1461,14 +1463,14 @@ bool json_plus::JSON_GetBoolean(JSON_NODE* object, const CHAR* key)
 	return false;
 }
 
-JSON_NODE* json_plus::JSON_CreateNode(JSON_TYPE type, const CHAR* key, void* value)
+JSON_NODE* json_plus::JSON_CreateNode(JSON_TYPE type, const char* key, void* value)
 {
 	JSON_NODE* node;
 
 	node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
 	if (node != NULL)
 	{
-		CHAR* node_key;
+		char* node_key;
 		void* node_value;
 
 		node_key = NULL;
@@ -1476,7 +1478,7 @@ JSON_NODE* json_plus::JSON_CreateNode(JSON_TYPE type, const CHAR* key, void* val
 		if (key != NULL)
 		{
 			size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-			node_key = (CHAR*)malloc(keyLength);
+			node_key = (char*)malloc(keyLength);
 			if (node_key == NULL) {
 				free(node);
 				return NULL;
@@ -1487,7 +1489,7 @@ JSON_NODE* json_plus::JSON_CreateNode(JSON_TYPE type, const CHAR* key, void* val
 
 		if ((type == JSON_TYPE::STRING) && (value != NULL))
 		{
-			size_t valueLength = UTF8_Encoding::GetStringUnits((const CHAR*)value) + 1;
+			size_t valueLength = UTF8_Encoding::GetStringUnits((const char*)value) + 1;
 			node_value = malloc(valueLength);
 			if (node_value == NULL)
 			{
@@ -1498,7 +1500,7 @@ JSON_NODE* json_plus::JSON_CreateNode(JSON_TYPE type, const CHAR* key, void* val
 				return NULL;
 			}
 
-			UTF8_Encoding::StringCopy((CHAR*)node_value, valueLength, (const CHAR*)value);
+			UTF8_Encoding::StringCopy((char*)node_value, valueLength, (const char*)value);
 		}
 		else {
 			node_value = value;
@@ -1518,7 +1520,7 @@ JSON_NODE* json_plus::JSON_CreateNode(JSON_TYPE type, const CHAR* key, void* val
 // **   UTF8_Encoding methods   ** //
 // ------------------------------- //
 
-UCHAR UTF8_Encoding::GetCharacterUnits(CHAR Code)
+unsigned char UTF8_Encoding::GetCharacterUnits(char Code)
 {
 	if ((Code & 0x80) == 0) {
 		return 1;
@@ -1537,13 +1539,13 @@ UCHAR UTF8_Encoding::GetCharacterUnits(CHAR Code)
 	}
 }
 
-UCHAR UTF8_Encoding::Encode(CHAR* pBuffer, size_t Length, ULONG CodePoint)
+unsigned char UTF8_Encoding::Encode(char* pBuffer, size_t Length, unsigned long CodePoint)
 {
 	if (CodePoint < 0x80)
 	{
 		if ((pBuffer != NULL) && (Length >= 2))
 		{
-			pBuffer[0] = (CHAR)CodePoint & 0x7F;
+			pBuffer[0] = (char)CodePoint & 0x7F;
 			pBuffer[1] = 0;
 		}
 		return 1;
@@ -1552,8 +1554,8 @@ UCHAR UTF8_Encoding::Encode(CHAR* pBuffer, size_t Length, ULONG CodePoint)
 	{
 		if ((pBuffer != NULL) && (Length >= 3))
 		{
-			pBuffer[0] = (CHAR)(CodePoint >> 6) | 0xC0;
-			pBuffer[1] = (CHAR)(CodePoint & 0x3F) | 0x80;
+			pBuffer[0] = (char)(CodePoint >> 6) | 0xC0;
+			pBuffer[1] = (char)(CodePoint & 0x3F) | 0x80;
 			pBuffer[2] = 0;
 		}
 		return 2;
@@ -1562,9 +1564,9 @@ UCHAR UTF8_Encoding::Encode(CHAR* pBuffer, size_t Length, ULONG CodePoint)
 	{
 		if ((pBuffer != NULL) && (Length >= 4))
 		{
-			pBuffer[0] = (CHAR)(CodePoint >> 12) | 0xE0;
-			pBuffer[1] = (CHAR)((CodePoint >> 6) & 0x3F) | 0x80;
-			pBuffer[2] = (CHAR)(CodePoint & 0x3F) | 0x80;
+			pBuffer[0] = (char)(CodePoint >> 12) | 0xE0;
+			pBuffer[1] = (char)((CodePoint >> 6) & 0x3F) | 0x80;
+			pBuffer[2] = (char)(CodePoint & 0x3F) | 0x80;
 			pBuffer[3] = 0;
 		}
 		return 3;
@@ -1573,10 +1575,10 @@ UCHAR UTF8_Encoding::Encode(CHAR* pBuffer, size_t Length, ULONG CodePoint)
 	{
 		if ((pBuffer != NULL) && (Length >= 5))
 		{
-			pBuffer[0] = (CHAR)(CodePoint >> 18) | 0xF0;
-			pBuffer[1] = (CHAR)((CodePoint >> 12) & 0x3F) | 0x80;
-			pBuffer[2] = (CHAR)((CodePoint >> 6) & 0x3F) | 0x80;
-			pBuffer[3] = (CHAR)(CodePoint & 0x3F) | 0x80;
+			pBuffer[0] = (char)(CodePoint >> 18) | 0xF0;
+			pBuffer[1] = (char)((CodePoint >> 12) & 0x3F) | 0x80;
+			pBuffer[2] = (char)((CodePoint >> 6) & 0x3F) | 0x80;
+			pBuffer[3] = (char)(CodePoint & 0x3F) | 0x80;
 			pBuffer[4] = 0;
 		}
 		return 4;
@@ -1585,13 +1587,13 @@ UCHAR UTF8_Encoding::Encode(CHAR* pBuffer, size_t Length, ULONG CodePoint)
 	return 0;
 }
 
-UCHAR UTF8_Encoding::EncodeUnsafe(CHAR* pBuffer, ULONG CodePoint)
+unsigned char UTF8_Encoding::EncodeUnsafe(char* pBuffer, unsigned long CodePoint)
 {
 	if (CodePoint < 0x80)
 	{
 		if (pBuffer != NULL)
 		{
-			pBuffer[0] = (CHAR)CodePoint & 0x7F;
+			pBuffer[0] = (char)CodePoint & 0x7F;
 		}
 		return 1;
 	}
@@ -1599,8 +1601,8 @@ UCHAR UTF8_Encoding::EncodeUnsafe(CHAR* pBuffer, ULONG CodePoint)
 	{
 		if (pBuffer != NULL)
 		{
-			pBuffer[0] = (CHAR)(CodePoint >> 6) | 0xC0;
-			pBuffer[1] = (CHAR)(CodePoint & 0x3F) | 0x80;
+			pBuffer[0] = (char)(CodePoint >> 6) | 0xC0;
+			pBuffer[1] = (char)(CodePoint & 0x3F) | 0x80;
 		}
 		return 2;
 	}
@@ -1608,9 +1610,9 @@ UCHAR UTF8_Encoding::EncodeUnsafe(CHAR* pBuffer, ULONG CodePoint)
 	{
 		if (pBuffer != NULL)
 		{
-			pBuffer[0] = (CHAR)(CodePoint >> 12) | 0xE0;
-			pBuffer[1] = (CHAR)((CodePoint >> 6) & 0x3F) | 0x80;
-			pBuffer[2] = (CHAR)(CodePoint & 0x3F) | 0x80;
+			pBuffer[0] = (char)(CodePoint >> 12) | 0xE0;
+			pBuffer[1] = (char)((CodePoint >> 6) & 0x3F) | 0x80;
+			pBuffer[2] = (char)(CodePoint & 0x3F) | 0x80;
 		}
 		return 3;
 	}
@@ -1618,10 +1620,10 @@ UCHAR UTF8_Encoding::EncodeUnsafe(CHAR* pBuffer, ULONG CodePoint)
 	{
 		if (pBuffer != NULL)
 		{
-			pBuffer[0] = (CHAR)(CodePoint >> 18) | 0xF0;
-			pBuffer[1] = (CHAR)((CodePoint >> 12) & 0x3F) | 0x80;
-			pBuffer[2] = (CHAR)((CodePoint >> 6) & 0x3F) | 0x80;
-			pBuffer[3] = (CHAR)(CodePoint & 0x3F) | 0x80;
+			pBuffer[0] = (char)(CodePoint >> 18) | 0xF0;
+			pBuffer[1] = (char)((CodePoint >> 12) & 0x3F) | 0x80;
+			pBuffer[2] = (char)((CodePoint >> 6) & 0x3F) | 0x80;
+			pBuffer[3] = (char)(CodePoint & 0x3F) | 0x80;
 		}
 		return 4;
 	}
@@ -1629,9 +1631,9 @@ UCHAR UTF8_Encoding::EncodeUnsafe(CHAR* pBuffer, ULONG CodePoint)
 	return 0;
 }
 
-ULONG UTF8_Encoding::Decode(UCHAR Units, const CHAR* String)
+unsigned long UTF8_Encoding::Decode(unsigned char Units, const char* String)
 {
-	ULONG CodePoint;
+	unsigned long CodePoint;
 
 	switch (Units)
 	{
@@ -1654,7 +1656,7 @@ ULONG UTF8_Encoding::Decode(UCHAR Units, const CHAR* String)
 	return CodePoint;
 }
 
-size_t UTF8_Encoding::GetStringUnits(const CHAR* String)
+size_t UTF8_Encoding::GetStringUnits(const char* String)
 {
 	size_t TotalUnits, CharUnits;
 
@@ -1672,9 +1674,9 @@ size_t UTF8_Encoding::GetStringUnits(const CHAR* String)
 	return TotalUnits;
 }
 
-size_t UTF8_Encoding::StringCopy(CHAR* Destination, size_t Length, const CHAR* Source)
+size_t UTF8_Encoding::StringCopy(char* Destination, size_t Length, const char* Source)
 {
-	UCHAR CharUnits;
+	unsigned char CharUnits;
 	size_t Len;
 
 	if ((Destination == NULL) || (Source == NULL) || (Length == 0)) return -1;
@@ -1721,10 +1723,10 @@ size_t UTF8_Encoding::StringCopy(CHAR* Destination, size_t Length, const CHAR* S
 	return Len;
 }
 
-LONG UTF8_Encoding::CompareStrings(const CHAR* String1, const CHAR* String2)
+long UTF8_Encoding::CompareStrings(const char* String1, const char* String2)
 {
-	UCHAR CharUnits1, CharUnits2;
-	ULONG CodePoint1, CodePoint2;
+	unsigned char CharUnits1, CharUnits2;
+	unsigned long CodePoint1, CodePoint2;
 
 	if ((String1 == 0) || (String2 == 0)) {
 		return 0x7FFFFFFF;
@@ -1772,10 +1774,10 @@ LONG UTF8_Encoding::CompareStrings(const CHAR* String1, const CHAR* String2)
 	}
 }
 
-LONG UTF8_Encoding::CompareStringsInsensitive(const CHAR* String1, const CHAR* String2)
+long UTF8_Encoding::CompareStringsInsensitive(const char* String1, const char* String2)
 {
-	UCHAR CharUnits1, CharUnits2;
-	ULONG CodePoint1, CodePoint2;
+	unsigned char CharUnits1, CharUnits2;
+	unsigned long CodePoint1, CodePoint2;
 
 	if ((String1 == 0) || (String2 == 0)) {
 		return 0x7FFFFFFF;
@@ -1876,7 +1878,7 @@ bool JSON_OBJECT::Empty() {
 	}
 }
 
-ULONG JSON_OBJECT::Count()
+unsigned long JSON_OBJECT::Count()
 {
 	if (this->count != 0) {
 		return this->count;
@@ -1896,7 +1898,7 @@ ULONG JSON_OBJECT::Count()
 	return this->count;
 }
 
-JSON_OBJECT JSON_OBJECT::Object(const CHAR* key)
+JSON_OBJECT JSON_OBJECT::Object(const char* key)
 {
 	JSON_NODE* node;
 
@@ -1919,7 +1921,7 @@ JSON_OBJECT JSON_OBJECT::Object(const CHAR* key)
 	return NULL;
 }
 
-JSON_ARRAY JSON_OBJECT::Array(const CHAR* key)
+JSON_ARRAY JSON_OBJECT::Array(const char* key)
 {
 	JSON_NODE* node;
 
@@ -1942,7 +1944,7 @@ JSON_ARRAY JSON_OBJECT::Array(const CHAR* key)
 	return NULL;
 }
 
-const CHAR* JSON_OBJECT::String(const CHAR* key)
+const char* JSON_OBJECT::String(const char* key)
 {
 	JSON_NODE* node;
 
@@ -1956,7 +1958,7 @@ const CHAR* JSON_OBJECT::String(const CHAR* key)
 		if (node->type == JSON_TYPE::STRING)
 		{
 			if (UTF8_Encoding::CompareStrings(node->key, key) == 0) {
-				return (const CHAR*)node->value;
+				return (const char*)node->value;
 			}
 		}
 		node = node->next;
@@ -1965,7 +1967,7 @@ const CHAR* JSON_OBJECT::String(const CHAR* key)
 	return NULL;
 }
 
-bool JSON_OBJECT::Boolean(const CHAR* key)
+bool JSON_OBJECT::Boolean(const char* key)
 {
 	JSON_NODE* node;
 
@@ -1990,9 +1992,9 @@ bool JSON_OBJECT::Boolean(const CHAR* key)
 
 JSON_OBJECT::Number::Number(JSON_OBJECT& parent) : parent(parent) {}
 
-double JSON_OBJECT::Number::Double(const CHAR* key)
+double JSON_OBJECT::Number::Double(const char* key)
 {
-	const CHAR* number;
+	const char* number;
 
 	number = JSON_GetNumber(this->parent.json_root, key);
 	if (number != NULL) {
@@ -2002,9 +2004,9 @@ double JSON_OBJECT::Number::Double(const CHAR* key)
 	return 0.0f;
 }
 
-int JSON_OBJECT::Number::Int(const CHAR* key)
+int JSON_OBJECT::Number::Int(const char* key)
 {
-	const CHAR* number;
+	const char* number;
 
 	number = JSON_GetNumber(this->parent.json_root, key);
 	if (number != NULL) {
@@ -2014,9 +2016,9 @@ int JSON_OBJECT::Number::Int(const CHAR* key)
 	return 0;
 }
 
-long JSON_OBJECT::Number::Long(const CHAR* key)
+long JSON_OBJECT::Number::Long(const char* key)
 {
-	const CHAR* number;
+	const char* number;
 
 	number = JSON_GetNumber(this->parent.json_root, key);
 	if (number != NULL) {
@@ -2026,9 +2028,9 @@ long JSON_OBJECT::Number::Long(const CHAR* key)
 	return 0;
 }
 
-long long JSON_OBJECT::Number::Int64(const CHAR* key)
+long long JSON_OBJECT::Number::Int64(const char* key)
 {
-	const CHAR* number;
+	const char* number;
 
 	number = JSON_GetNumber(this->parent.json_root, key);
 	if (number != NULL) {
@@ -2038,14 +2040,14 @@ long long JSON_OBJECT::Number::Int64(const CHAR* key)
 	return 0;
 }
 
-const CHAR* JSON_OBJECT::Number::String(const CHAR* key)
+const char* JSON_OBJECT::Number::String(const char* key)
 {
 	return JSON_GetNumber(parent.json_root, key);
 }
 
 JSON_OBJECT::Insert::Insert(JSON_OBJECT& parent) : parent(parent) {}
 
-JSON_OBJECT JSON_OBJECT::Insert::Object(const CHAR* key)
+JSON_OBJECT JSON_OBJECT::Insert::Object(const char* key)
 {
 	JSON_NODE* node;
 
@@ -2053,7 +2055,7 @@ JSON_OBJECT JSON_OBJECT::Insert::Object(const CHAR* key)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* object_key = (CHAR*)malloc(keyLength);
+		char* object_key = (char*)malloc(keyLength);
 		if (object_key == NULL) {
 			free(node);
 			return NULL;
@@ -2073,7 +2075,7 @@ JSON_OBJECT JSON_OBJECT::Insert::Object(const CHAR* key)
 	return node;
 }
 
-JSON_ARRAY JSON_OBJECT::Insert::Array(const CHAR* key)
+JSON_ARRAY JSON_OBJECT::Insert::Array(const char* key)
 {
 	JSON_NODE* node;
 
@@ -2081,7 +2083,7 @@ JSON_ARRAY JSON_OBJECT::Insert::Array(const CHAR* key)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* array_key = (CHAR*)malloc(keyLength);
+		char* array_key = (char*)malloc(keyLength);
 		if (array_key == NULL) {
 			free(node);
 			return NULL;
@@ -2101,7 +2103,7 @@ JSON_ARRAY JSON_OBJECT::Insert::Array(const CHAR* key)
 	return node;
 }
 
-JSON_NODE* JSON_OBJECT::Insert::String(const CHAR* key, const CHAR* value)
+JSON_NODE* JSON_OBJECT::Insert::String(const char* key, const char* value)
 {
 	JSON_NODE* node;
 
@@ -2109,14 +2111,14 @@ JSON_NODE* JSON_OBJECT::Insert::String(const CHAR* key, const CHAR* value)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* string_key = (CHAR*)malloc(keyLength);
+		char* string_key = (char*)malloc(keyLength);
 		if (string_key == NULL) {
 			free(node);
 			return NULL;
 		}
 
 		size_t valueLength = UTF8_Encoding::GetStringUnits(value) + 1;
-		CHAR* string_value = (CHAR*)malloc(valueLength);
+		char* string_value = (char*)malloc(valueLength);
 		if (string_value == NULL) {
 			free(string_key);
 			free(node);
@@ -2138,7 +2140,7 @@ JSON_NODE* JSON_OBJECT::Insert::String(const CHAR* key, const CHAR* value)
 	return node;
 }
 
-JSON_NODE* JSON_OBJECT::Insert::Boolean(const CHAR* key, bool value)
+JSON_NODE* JSON_OBJECT::Insert::Boolean(const char* key, bool value)
 {
 	JSON_NODE* node;
 
@@ -2146,7 +2148,7 @@ JSON_NODE* JSON_OBJECT::Insert::Boolean(const CHAR* key, bool value)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* boolean_key = (CHAR*)malloc(keyLength);
+		char* boolean_key = (char*)malloc(keyLength);
 		if (boolean_key == NULL) {
 			free(node);
 			return NULL;
@@ -2168,7 +2170,7 @@ JSON_NODE* JSON_OBJECT::Insert::Boolean(const CHAR* key, bool value)
 
 JSON_OBJECT::Insert::Number::Number(Insert& parent) : parent(parent) {}
 
-JSON_NODE* JSON_OBJECT::Insert::Number::Double(const CHAR* key, double value)
+JSON_NODE* JSON_OBJECT::Insert::Number::Double(const char* key, double value)
 {
 	JSON_NODE* node;
 
@@ -2176,13 +2178,13 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Double(const CHAR* key, double value)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* number_key = (CHAR*)malloc(keyLength);
+		char* number_key = (char*)malloc(keyLength);
 		if (number_key == NULL) {
 			free(node);
 			return NULL;
 		}
 
-		CHAR* number_value = (CHAR*)malloc(128);
+		char* number_value = (char*)malloc(128);
 		if (number_value == NULL) {
 			free(number_key);
 			free(node);
@@ -2204,7 +2206,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Double(const CHAR* key, double value)
 	return node;
 }
 
-JSON_NODE* JSON_OBJECT::Insert::Number::Int(const CHAR* key, int value)
+JSON_NODE* JSON_OBJECT::Insert::Number::Int(const char* key, int value)
 {
 	JSON_NODE* node;
 
@@ -2212,13 +2214,13 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Int(const CHAR* key, int value)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* number_key = (CHAR*)malloc(keyLength);
+		char* number_key = (char*)malloc(keyLength);
 		if (number_key == NULL) {
 			free(node);
 			return NULL;
 		}
 
-		CHAR* number_value = (CHAR*)malloc(32);
+		char* number_value = (char*)malloc(32);
 		if (number_value == NULL) {
 			free(number_key);
 			free(node);
@@ -2240,7 +2242,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Int(const CHAR* key, int value)
 	return node;
 }
 
-JSON_NODE* JSON_OBJECT::Insert::Number::Long(const CHAR* key, long value)
+JSON_NODE* JSON_OBJECT::Insert::Number::Long(const char* key, long value)
 {
 	JSON_NODE* node;
 
@@ -2248,13 +2250,13 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Long(const CHAR* key, long value)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* number_key = (CHAR*)malloc(keyLength);
+		char* number_key = (char*)malloc(keyLength);
 		if (number_key == NULL) {
 			free(node);
 			return NULL;
 		}
 
-		CHAR* number_value = (CHAR*)malloc(32);
+		char* number_value = (char*)malloc(32);
 		if (number_value == NULL) {
 			free(number_key);
 			free(node);
@@ -2276,7 +2278,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Long(const CHAR* key, long value)
 	return node;
 }
 
-JSON_NODE* JSON_OBJECT::Insert::Number::Int64(const CHAR* key, long long value)
+JSON_NODE* JSON_OBJECT::Insert::Number::Int64(const char* key, long long value)
 {
 	JSON_NODE* node;
 
@@ -2284,13 +2286,13 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Int64(const CHAR* key, long long value)
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* number_key = (CHAR*)malloc(keyLength);
+		char* number_key = (char*)malloc(keyLength);
 		if (number_key == NULL) {
 			free(node);
 			return NULL;
 		}
 
-		CHAR* number_value = (CHAR*)malloc(64);
+		char* number_value = (char*)malloc(64);
 		if (number_value == NULL) {
 			free(number_key);
 			free(node);
@@ -2312,7 +2314,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Int64(const CHAR* key, long long value)
 	return node;
 }
 
-JSON_NODE* JSON_OBJECT::Insert::Number::String(const CHAR* key, const CHAR* value)
+JSON_NODE* JSON_OBJECT::Insert::Number::String(const char* key, const char* value)
 {
 	JSON_NODE* node;
 
@@ -2320,14 +2322,14 @@ JSON_NODE* JSON_OBJECT::Insert::Number::String(const CHAR* key, const CHAR* valu
 	if (node != NULL)
 	{
 		size_t keyLength = UTF8_Encoding::GetStringUnits(key) + 1;
-		CHAR* number_key = (CHAR*)malloc(keyLength);
+		char* number_key = (char*)malloc(keyLength);
 		if (number_key == NULL) {
 			free(node);
 			return NULL;
 		}
 
 		size_t valueLength = UTF8_Encoding::GetStringUnits(value) + 1;
-		CHAR* number_value = (CHAR*)malloc(valueLength);
+		char* number_value = (char*)malloc(valueLength);
 		if (number_value == NULL) {
 			free(number_key);
 			free(node);
@@ -2349,12 +2351,12 @@ JSON_NODE* JSON_OBJECT::Insert::Number::String(const CHAR* key, const CHAR* valu
 	return node;
 }
 
-CHAR* JSON_OBJECT::Generate(const CHAR* format)
+char* JSON_OBJECT::Generate(const char* format)
 {
 	return JSON_Generate(this->json_root, format);
 }
 
-bool JSON_OBJECT::FormatOverride(const CHAR* format)
+bool JSON_OBJECT::FormatOverride(const char* format)
 {
 	if (this->json_root) {
 		this->json_root->format = format;
@@ -2397,7 +2399,7 @@ bool JSON_ARRAY::Empty() {
 	}
 }
 
-ULONG JSON_ARRAY::Count()
+unsigned long JSON_ARRAY::Count()
 {
 	if (this->count != 0) {
 		return this->count;
@@ -2417,10 +2419,10 @@ ULONG JSON_ARRAY::Count()
 	return this->count;
 }
 
-JSON_OBJECT JSON_ARRAY::Object(ULONG i)
+JSON_OBJECT JSON_ARRAY::Object(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->json_root->value;
 	while (node != NULL)
@@ -2435,10 +2437,10 @@ JSON_OBJECT JSON_ARRAY::Object(ULONG i)
 	return NULL;
 }
 
-JSON_ARRAY JSON_ARRAY::Array(ULONG i)
+JSON_ARRAY JSON_ARRAY::Array(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->json_root->value;
 	while (node != NULL)
@@ -2453,16 +2455,16 @@ JSON_ARRAY JSON_ARRAY::Array(ULONG i)
 	return NULL;
 }
 
-const CHAR* JSON_ARRAY::String(ULONG i)
+const char* JSON_ARRAY::String(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->json_root->value;
 	while (node != NULL)
 	{
 		if (ci == i) {
-			return (CHAR*)node->value;
+			return (char*)node->value;
 		}
 		node = node->next;
 		ci++;
@@ -2471,10 +2473,10 @@ const CHAR* JSON_ARRAY::String(ULONG i)
 	return NULL;
 }
 
-bool JSON_ARRAY::Boolean(ULONG i)
+bool JSON_ARRAY::Boolean(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->json_root->value;
 	while (node != NULL)
@@ -2491,16 +2493,16 @@ bool JSON_ARRAY::Boolean(ULONG i)
 
 JSON_ARRAY::Number::Number(JSON_ARRAY& parent) : parent(parent) {}
 
-double JSON_ARRAY::Number::Double(ULONG i)
+double JSON_ARRAY::Number::Double(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->parent.json_root->value;
 	while (node != NULL)
 	{
 		if (ci == i) {
-			return atof((const CHAR*)node->value);
+			return atof((const char*)node->value);
 		}
 		node = node->next;
 		ci++;
@@ -2509,16 +2511,16 @@ double JSON_ARRAY::Number::Double(ULONG i)
 	return 0.0f;
 }
 
-int JSON_ARRAY::Number::Int(ULONG i)
+int JSON_ARRAY::Number::Int(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->parent.json_root->value;
 	while (node != NULL)
 	{
 		if (ci == i) {
-			return atoi((const CHAR*)node->value);
+			return atoi((const char*)node->value);
 		}
 		node = node->next;
 		ci++;
@@ -2527,16 +2529,16 @@ int JSON_ARRAY::Number::Int(ULONG i)
 	return 0;
 }
 
-long JSON_ARRAY::Number::Long(ULONG i)
+long JSON_ARRAY::Number::Long(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->parent.json_root->value;
 	while (node != NULL)
 	{
 		if (ci == i) {
-			return atol((const CHAR*)node->value);
+			return atol((const char*)node->value);
 		}
 		node = node->next;
 		ci++;
@@ -2545,16 +2547,16 @@ long JSON_ARRAY::Number::Long(ULONG i)
 	return 0;
 }
 
-long long JSON_ARRAY::Number::Int64(ULONG i)
+long long JSON_ARRAY::Number::Int64(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->parent.json_root->value;
 	while (node != NULL)
 	{
 		if (ci == i) {
-			return atoll((const CHAR*)node->value);
+			return atoll((const char*)node->value);
 		}
 		node = node->next;
 		ci++;
@@ -2563,16 +2565,16 @@ long long JSON_ARRAY::Number::Int64(ULONG i)
 	return 0;
 }
 
-const CHAR* JSON_ARRAY::Number::String(ULONG i)
+const char* JSON_ARRAY::Number::String(unsigned long i)
 {
 	JSON_NODE* node;
-	ULONG ci = 0;
+	unsigned long ci = 0;
 
 	node = (JSON_NODE*)this->parent.json_root->value;
 	while (node != NULL)
 	{
 		if (ci == i) {
-			return (const CHAR*)node->value;
+			return (const char*)node->value;
 		}
 		node = node->next;
 		ci++;
@@ -2621,7 +2623,7 @@ JSON_ARRAY JSON_ARRAY::Insert::Array()
 	return node;
 }
 
-JSON_NODE* JSON_ARRAY::Insert::String(const CHAR* value)
+JSON_NODE* JSON_ARRAY::Insert::String(const char* value)
 {
 	JSON_NODE* node;
 
@@ -2629,7 +2631,7 @@ JSON_NODE* JSON_ARRAY::Insert::String(const CHAR* value)
 	if (node != NULL)
 	{
 		size_t valueLength = UTF8_Encoding::GetStringUnits(value) + 1;
-		CHAR* string_value = (CHAR*)malloc(valueLength);
+		char* string_value = (char*)malloc(valueLength);
 		if (string_value == NULL) {
 			free(node);
 			return NULL;
@@ -2677,7 +2679,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Double(double value)
 	node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
 	if (node != NULL)
 	{
-		CHAR* number_value = (CHAR*)malloc(128);
+		char* number_value = (char*)malloc(128);
 		if (number_value == NULL) {
 			free(node);
 			return NULL;
@@ -2704,7 +2706,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Int(int value)
 	node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
 	if (node != NULL)
 	{
-		CHAR* number_value = (CHAR*)malloc(32);
+		char* number_value = (char*)malloc(32);
 		if (number_value == NULL) {
 			free(node);
 			return NULL;
@@ -2731,7 +2733,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Long(long value)
 	node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
 	if (node != NULL)
 	{
-		CHAR* number_value = (CHAR*)malloc(32);
+		char* number_value = (char*)malloc(32);
 		if (number_value == NULL) {
 			free(node);
 			return NULL;
@@ -2758,7 +2760,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Int64(long long value)
 	node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
 	if (node != NULL)
 	{
-		CHAR* number_value = (CHAR*)malloc(64);
+		char* number_value = (char*)malloc(64);
 		if (number_value == NULL) {
 			free(node);
 			return NULL;
@@ -2778,7 +2780,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Int64(long long value)
 	return node;
 }
 
-JSON_NODE* JSON_ARRAY::Insert::Number::String(const CHAR* value)
+JSON_NODE* JSON_ARRAY::Insert::Number::String(const char* value)
 {
 	JSON_NODE* node;
 
@@ -2786,7 +2788,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::String(const CHAR* value)
 	if (node != NULL)
 	{
 		size_t valueLength = UTF8_Encoding::GetStringUnits(value) + 1;
-		CHAR* number_value = (CHAR*)malloc(valueLength);
+		char* number_value = (char*)malloc(valueLength);
 		if (number_value == NULL) {
 			free(node);
 			return NULL;
@@ -2806,12 +2808,12 @@ JSON_NODE* JSON_ARRAY::Insert::Number::String(const CHAR* value)
 	return node;
 }
 
-CHAR* JSON_ARRAY::Generate(const CHAR* format)
+char* JSON_ARRAY::Generate(const char* format)
 {
 	return JSON_Generate(this->json_root, format);
 }
 
-bool JSON_ARRAY::FormatOverride(const CHAR* format)
+bool JSON_ARRAY::FormatOverride(const char* format)
 {
 	if (this->json_root) {
 		this->json_root->format = format;

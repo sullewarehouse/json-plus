@@ -10,8 +10,6 @@
 //     The header file for the json_plus namespace.
 //
 
-#include <Windows.h>
-
 #ifndef JSON_PLUS_H
 #define JSON_PLUS_H
 
@@ -20,29 +18,29 @@ namespace json_plus
 	// UTF8 functions
 	namespace UTF8_Encoding
 	{
-		// Get the number of 'CHAR' units for a UTF8 encoded Unicode character
-		UCHAR GetCharacterUnits(CHAR Code);
+		// Get the number of 'char' units for a UTF8 encoded Unicode character
+		unsigned char GetCharacterUnits(char Code);
 
 		// Encode a Unicode code point (character) as UTF8
-		UCHAR Encode(CHAR* pBuffer, size_t Length, ULONG CodePoint);
+		unsigned char Encode(char* pBuffer, size_t Length, unsigned long CodePoint);
 
 		// Encode a Unicode code point (character) as UTF8 (unsafe version)
-		UCHAR EncodeUnsafe(CHAR* pBuffer, ULONG CodePoint);
+		unsigned char EncodeUnsafe(char* pBuffer, unsigned long CodePoint);
 
 		// Get a Unicode code point (character) from a UTF8 encoded string
-		ULONG Decode(UCHAR Units, const CHAR* String);
+		unsigned long Decode(unsigned char Units, const char* String);
 
-		// Get the number of 'CHAR' units for a UTF8 encoded string
-		size_t GetStringUnits(const CHAR* String);
+		// Get the number of 'char' units for a UTF8 encoded string
+		size_t GetStringUnits(const char* String);
 
 		// Copy a UTF8 encoded string
-		size_t StringCopy(CHAR* Destination, size_t Length, const CHAR* Source);
+		size_t StringCopy(char* Destination, size_t Length, const char* Source);
 
 		// Compare 2 UTF8 encoded strings
-		LONG CompareStrings(const CHAR* String1, const CHAR* String2);
+		long CompareStrings(const char* String1, const char* String2);
 
 		// Compare 2 UTF8 encoded strings (insensitive)
-		LONG CompareStringsInsensitive(const CHAR* String1, const CHAR* String2);
+		long CompareStringsInsensitive(const char* String1, const char* String2);
 	}
 
 	// JSON token types
@@ -80,13 +78,13 @@ namespace json_plus
 		// Next node in the linked list
 		JSON_NODE* next;
 		// Key for the node
-		CHAR* key;
+		char* key;
 		// Value for the node
 		void* value;
 		// JSON node type
 		JSON_TYPE type;
 		// Format override for the node
-		const CHAR* format;
+		const char* format;
 	};
 
 	// JSON error codes
@@ -134,38 +132,38 @@ namespace json_plus
 	struct JSON_PARSER_CONTEXT
 	{
 		JSON_ERROR_CODE errorCode;
-		const CHAR* errorDescription;
-		ULONG lineNumber;
-		ULONG charNumber;
-		const CHAR* errorTokens;
+		const char* errorDescription;
+		unsigned long lineNumber;
+		unsigned long charNumber;
+		const char* errorTokens;
 	};
 
 	// Create JSON string from node tree
-	CHAR* JSON_Generate(JSON_NODE* json_root, const CHAR* format);
+	char* JSON_Generate(JSON_NODE* json_root, const char* format);
 
 	// Parse a JSON string and create a node tree
-	JSON_NODE* JSON_Parse(const CHAR* json, JSON_PARSER_CONTEXT* context);
+	JSON_NODE* JSON_Parse(const char* json, JSON_PARSER_CONTEXT* context);
 
 	// Free a JSON node tree
 	void JSON_Free(JSON_NODE* json_root);
 
 	// Get a JSON object from an object
-	JSON_NODE* JSON_GetObject(JSON_NODE* object, const CHAR* key);
+	JSON_NODE* JSON_GetObject(JSON_NODE* object, const char* key);
 
 	// Get a JSON array from an object
-	JSON_NODE* JSON_GetArray(JSON_NODE* object, const CHAR* key);
+	JSON_NODE* JSON_GetArray(JSON_NODE* object, const char* key);
 
 	// Get a JSON string from an object
-	CHAR* JSON_GetString(JSON_NODE* object, const CHAR* key);
+	char* JSON_GetString(JSON_NODE* object, const char* key);
 
 	// Get a JSON number from an object
-	CHAR* JSON_GetNumber(JSON_NODE* object, const CHAR* key);
+	char* JSON_GetNumber(JSON_NODE* object, const char* key);
 
 	// Get a JSON bool value from an object
-	bool JSON_GetBoolean(JSON_NODE* object, const CHAR* key);
+	bool JSON_GetBoolean(JSON_NODE* object, const char* key);
 
 	// Create a JSON node
-	JSON_NODE* JSON_CreateNode(JSON_TYPE type, const CHAR* key, void* value);
+	JSON_NODE* JSON_CreateNode(JSON_TYPE type, const char* key, void* value);
 
 	// Forward declaration of JSON_OBJECT
 	class JSON_OBJECT;
@@ -180,7 +178,7 @@ namespace json_plus
 		// Object root node
 		JSON_NODE* json_root;
 		// Number of items in the object
-		ULONG count;
+		unsigned long count;
 	public:
 		// Default initializer
 		JSON_OBJECT();
@@ -193,15 +191,15 @@ namespace json_plus
 		// Check if the object exists
 		bool Empty();
 		// Get the number of items in the object
-		ULONG Count();
+		unsigned long Count();
 		// Get an object from the object using a key
-		JSON_OBJECT Object(const CHAR* key);
+		JSON_OBJECT Object(const char* key);
 		// Get an array from the object using a key
-		JSON_ARRAY Array(const CHAR* key);
+		JSON_ARRAY Array(const char* key);
 		// Get a string from the object using a key
-		const CHAR* String(const CHAR* key);
+		const char* String(const char* key);
 		// Get a boolean from the object using a key
-		bool Boolean(const CHAR* key);
+		bool Boolean(const char* key);
 		// Nested Number class
 		class Number
 		{
@@ -212,15 +210,15 @@ namespace json_plus
 			// Constructor for the Number class, which is a nested class inside the JSON_OBJECT class.
 			Number(JSON_OBJECT& parent);
 			// Get a double from the object using a key
-			double Double(const CHAR* key);
+			double Double(const char* key);
 			// Get a int from the object using a key
-			int Int(const CHAR* key);
+			int Int(const char* key);
 			// Get a long from the object using a key
-			long Long(const CHAR* key);
+			long Long(const char* key);
 			// Get a 64-bit int from the object using a key
-			long long Int64(const CHAR* key);
+			long long Int64(const char* key);
 			// Get a number from the object as a string using a key
-			const CHAR* String(const CHAR* key);
+			const char* String(const char* key);
 		};
 		// Get a number from the object
 		Number Number{ *this };
@@ -234,13 +232,13 @@ namespace json_plus
 			// Constructor for the Insert class, which is a nested class inside the JSON_OBJECT class.
 			Insert(JSON_OBJECT& parent);
 			// Insert an object with a key
-			JSON_OBJECT Object(const CHAR* key);
+			JSON_OBJECT Object(const char* key);
 			// Insert an array with a key
-			JSON_ARRAY Array(const CHAR* key);
+			JSON_ARRAY Array(const char* key);
 			// Insert a string with a key
-			JSON_NODE* String(const CHAR* key, const CHAR* value);
+			JSON_NODE* String(const char* key, const char* value);
 			// Insert a boolean with a key
-			JSON_NODE* Boolean(const CHAR* key, bool value);
+			JSON_NODE* Boolean(const char* key, bool value);
 			// Nested Number class for Insert
 			class Number
 			{
@@ -251,15 +249,15 @@ namespace json_plus
 				// Constructor for the Number class, which is a nested class inside the JSON_OBJECT::Insert class.
 				Number(Insert& parent);
 				// Insert a double with a key
-				JSON_NODE* Double(const CHAR* key, double value);
+				JSON_NODE* Double(const char* key, double value);
 				// Insert a int with a key
-				JSON_NODE* Int(const CHAR* key, int value);
+				JSON_NODE* Int(const char* key, int value);
 				// Insert a long with a key
-				JSON_NODE* Long(const CHAR* key, long value);
+				JSON_NODE* Long(const char* key, long value);
 				// Insert a 64-bit int with a key
-				JSON_NODE* Int64(const CHAR* key, long long value);
+				JSON_NODE* Int64(const char* key, long long value);
 				// Insert a number as a string with a key
-				JSON_NODE* String(const CHAR* key, const CHAR* value);
+				JSON_NODE* String(const char* key, const char* value);
 			};
 			// Insert a number into the object
 			Number Number{ *this };
@@ -267,9 +265,9 @@ namespace json_plus
 		// Insert a JSON object, array or key-value pair
 		Insert Insert{ *this };
 		// Create JSON from object
-		CHAR* Generate(const CHAR* format);
+		char* Generate(const char* format);
 		// Format override
-		bool FormatOverride(const CHAR* format);
+		bool FormatOverride(const char* format);
 	};
 
 	// JSON array
@@ -279,7 +277,7 @@ namespace json_plus
 		// Array root node
 		JSON_NODE* json_root;
 		// Number of items in the array
-		ULONG count;
+		unsigned long count;
 	public:
 		// Default initializer
 		JSON_ARRAY();
@@ -292,15 +290,15 @@ namespace json_plus
 		// Check if the array exists
 		bool Empty();
 		// Get the number of items in the array
-		ULONG Count();
+		unsigned long Count();
 		// Get an object from the array using an index
-		JSON_OBJECT Object(ULONG i);
+		JSON_OBJECT Object(unsigned long i);
 		// Get an array from the array using an index
-		JSON_ARRAY Array(ULONG i);
+		JSON_ARRAY Array(unsigned long i);
 		// Get a string from the array using an index
-		const CHAR* String(ULONG i);
+		const char* String(unsigned long i);
 		// Get a boolean from the array using an index
-		bool Boolean(ULONG i);
+		bool Boolean(unsigned long i);
 		// Nested Number class
 		class Number
 		{
@@ -311,15 +309,15 @@ namespace json_plus
 			// Constructor for the Number class, which is a nested class inside the JSON_ARRAY class.
 			Number(JSON_ARRAY& parent);
 			// Get a double from the array using an index
-			double Double(ULONG i);
+			double Double(unsigned long i);
 			// Get a int from the array using an index
-			int Int(ULONG i);
+			int Int(unsigned long i);
 			// Get a long from the array using an index
-			long Long(ULONG i);
+			long Long(unsigned long i);
 			// Get a 64-bit int from the array using an index
-			long long Int64(ULONG i);
+			long long Int64(unsigned long i);
 			// Get a double from the array using an index
-			const CHAR* String(ULONG i);
+			const char* String(unsigned long i);
 		};
 		// Get a number from the array
 		Number Number{ *this };
@@ -337,7 +335,7 @@ namespace json_plus
 			// Insert an array
 			JSON_ARRAY Array();
 			// Insert a string
-			JSON_NODE* String(const CHAR* value);
+			JSON_NODE* String(const char* value);
 			// Insert a boolean
 			JSON_NODE* Boolean(bool value);
 			// Nested Number class for Insert
@@ -358,7 +356,7 @@ namespace json_plus
 				// Insert a 64-bit int
 				JSON_NODE* Int64(long long value);
 				// Insert a number as a string
-				JSON_NODE* String(const CHAR* value);
+				JSON_NODE* String(const char* value);
 			};
 			// Insert a number into the array
 			Number Number{ *this };
@@ -366,9 +364,9 @@ namespace json_plus
 		// Insert a JSON object, array or key-value pair
 		Insert Insert{ *this };
 		// Create JSON from array
-		CHAR* Generate(const CHAR* format);
+		char* Generate(const char* format);
 		// Format override
-		bool FormatOverride(const CHAR* format);
+		bool FormatOverride(const char* format);
 	};
 }
 

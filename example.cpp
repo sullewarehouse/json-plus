@@ -10,17 +10,16 @@
 //     The example program for using json-plus.
 //
 
-#include <Windows.h>
 #include <iostream>
 
 #include "json-plus.h"
 using namespace json_plus;
 
 // This function is an example of creating a json string from a json node tree
-CHAR* create_json_string()
+char* create_json_string()
 {
 	JSON_OBJECT json_file;
-	CHAR* json_string;
+	char* json_string;
 
 	json_string = NULL;
 
@@ -76,7 +75,7 @@ CHAR* create_json_string()
 int wmain()
 {
 	// Create a json string
-	CHAR* json_string = create_json_string();
+	char* json_string = create_json_string();
 
 	// Parser context
 	JSON_PARSER_CONTEXT context;
@@ -93,7 +92,7 @@ int wmain()
 	if (!json_file.Empty())
 	{
 		// Get json members
-		const CHAR* type = json_file.String("type");
+		const char* type = json_file.String("type");
 		int count = json_file.Number.Long("count");
 		bool encrypted = json_file.Boolean("encrypted");
 
@@ -105,7 +104,7 @@ int wmain()
 		if (!users.Empty())
 		{
 			// Walk the array
-			for (ULONG i = 0; i < users.Count(); i++)
+			for (unsigned long i = 0; i < users.Count(); i++)
 			{
 				// Get user object
 				JSON_OBJECT account = users.Object(i);
