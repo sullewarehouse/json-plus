@@ -8,7 +8,7 @@ Check **`example.cpp`** for a detailed example that creates a json string, parse
 
 ## Functions
 
-- [JSON_Encode](docs/JSON_Encode.md)
+- [JSON_Generate](docs/JSON_Generate.md)
 - [JSON_Parse](docs/JSON_Parse.md)
 - [JSON_Free](docs/JSON_Free.md)
 - [JSON_GetObject](docs/JSON_GetObject.md)
@@ -20,7 +20,7 @@ Check **`example.cpp`** for a detailed example that creates a json string, parse
 
 ## JSON_OBJECT and JSON_ARRAY classes
 
-You can use the JSON_OBJECT and JSON_ARRAY classes instead of using the JSON_Get*** functions.  
+You can use the `JSON_OBJECT` and `JSON_ARRAY` classes instead of using the JSON_Get*** functions.  
 Here is a simple example:
 ```
 JSON_PARSER_CONTEXT context;
@@ -53,6 +53,9 @@ Members:
     - Long
     - Int64
     - String
-- Encode
+- Generate
 - FormatOverride
 
+## JSON resources
+
+- [JSON Specification](https://www.rfc-editor.org/rfc/rfc8259)

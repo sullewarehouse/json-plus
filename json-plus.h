@@ -141,7 +141,7 @@ namespace json_plus
 	};
 
 	// Create JSON string from node tree
-	CHAR* JSON_Encode(JSON_NODE* json_root, const CHAR* format);
+	CHAR* JSON_Generate(JSON_NODE* json_root, const CHAR* format);
 
 	// Parse a JSON string and create a node tree
 	JSON_NODE* JSON_Parse(const CHAR* json, JSON_PARSER_CONTEXT* context);
@@ -267,7 +267,7 @@ namespace json_plus
 		// Insert a JSON object, array or key-value pair
 		Insert Insert{ *this };
 		// Create JSON from object
-		CHAR* Encode(const CHAR* format);
+		CHAR* Generate(const CHAR* format);
 		// Format override
 		bool FormatOverride(const CHAR* format);
 	};
@@ -366,7 +366,7 @@ namespace json_plus
 		// Insert a JSON object, array or key-value pair
 		Insert Insert{ *this };
 		// Create JSON from array
-		CHAR* Encode(const CHAR* format);
+		CHAR* Generate(const CHAR* format);
 		// Format override
 		bool FormatOverride(const CHAR* format);
 	};

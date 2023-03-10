@@ -20,12 +20,12 @@ using namespace json_plus;
 // Increasing this number may result in faster parsing but will use more memory
 #define JSON_PARSER_BUFFER_INCREASE 32
 
-// The number of 'CHAR' units to add to the encoder buffer size when the buffer is too small
+// The number of 'CHAR' units to add to the generator buffer size when the buffer is too small
 // Increasing this number may result in faster encoding but will use more memory
-#define JSON_ENCODER_BUFFER_INCREASE 32
+#define JSON_GENERATOR_BUFFER_INCREASE 32
 
-// JSON encoder context
-struct JSON_ENCODE_CONTEXT
+// JSON generator context
+struct JSON_GENERATOR_CONTEXT
 {
 	bool error;
 	CHAR* buffer;
@@ -78,21 +78,21 @@ static const CHAR* JSON_ERROR_STRINGS[] =
 	"syntax error, expected a NULL value"
 };
 
-// ---------------------- //
-// **   JSON encoder   ** //
-// ---------------------- //
+// ------------------------ //
+// **   JSON generator   ** //
+// ------------------------ //
 
-// Forward declaration of json_EncoderIndentation
+// Forward declaration of json_GeneratorIndentation
 // Output tabs for a line, this is automatically enabled when a format string is provided
-void json_EncoderIndentation(JSON_ENCODE_CONTEXT* context);
+void json_GeneratorIndentation(JSON_GENERATOR_CONTEXT* context);
 
-// -------------------------------- //
-// **   JSON encoder functions   ** //
-// -------------------------------- //
+// ---------------------------------- //
+// **   JSON generator functions   ** //
+// ---------------------------------- //
 
 // Append a new character to the JSON string buffer
 // If `format` is true then the function checks formatting parameters
-void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool format)
+void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, ULONG CodePoint, bool format)
 {
 	UCHAR CharUnits;
 	const CHAR* pFormatString;
@@ -123,8 +123,8 @@ void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool form
 			}
 			else if (FormatChar == CodePoint) {
 				for (ULONG i = 0; i < newLines; i++) {
-					json_EncoderAppend(context, '\n', false);
-					json_EncoderIndentation(context);
+					json_GeneratorAppend(context, '\n', false);
+					json_GeneratorIndentation(context);
 				}
 				break;
 			}
@@ -141,7 +141,7 @@ void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool form
 	// buffer big enough for CodePoint + NULL character ?
 	if ((context->index + CharUnits + 1) >= context->bufferLength)
 	{
-		context->bufferLength += JSON_ENCODER_BUFFER_INCREASE;
+		context->bufferLength += JSON_GENERATOR_BUFFER_INCREASE;
 		CHAR* pNewBuffer = (CHAR*)realloc(context->buffer, context->bufferLength);
 		if (pNewBuffer != NULL) {
 			context->buffer = pNewBuffer;
@@ -175,8 +175,8 @@ void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool form
 				}
 				else {
 					for (ULONG i = 0; i < newLines; i++) {
-						json_EncoderAppend(context, '\n', false);
-						json_EncoderIndentation(context);
+						json_GeneratorAppend(context, '\n', false);
+						json_GeneratorIndentation(context);
 					}
 					break;
 				}
@@ -187,16 +187,16 @@ void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool form
 	}
 }
 
-void json_EncoderIndentation(JSON_ENCODE_CONTEXT* context)
+void json_GeneratorIndentation(JSON_GENERATOR_CONTEXT* context)
 {
 	for (long i = 0; i < context->indentation; i++)
 	{
-		json_EncoderAppend(context, '\t', false);
+		json_GeneratorAppend(context, '\t', false);
 	}
 }
 
-// Recursive JSON node encoder
-CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
+// Recursive JSON text generator (from node)
+CHAR* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 {
 	UCHAR CharUnits;
 	ULONG CodePoint;
@@ -208,7 +208,7 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 	{
 		if (node->key != NULL)
 		{
-			json_EncoderAppend(context, '"', true);
+			json_GeneratorAppend(context, '"', true);
 
 			const CHAR* pKey = node->key;
 			CharUnits = UTF8_Encoding::GetCharacterUnits(*pKey);
@@ -227,12 +227,12 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 				case 0x0A: // n line feed
 				case 0x0D: // r carriage return
 				case 0x09: // t tab
-					json_EncoderAppend(context, '\\', false);
+					json_GeneratorAppend(context, '\\', false);
 				default:
 					break;
 				}
 
-				json_EncoderAppend(context, CodePoint, false);
+				json_GeneratorAppend(context, CodePoint, false);
 
 				pKey += CharUnits;
 
@@ -240,8 +240,8 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 				CodePoint = UTF8_Encoding::Decode(CharUnits, pKey);
 			}
 
-			json_EncoderAppend(context, '"', true);
-			json_EncoderAppend(context, ':', true);
+			json_GeneratorAppend(context, '"', true);
+			json_GeneratorAppend(context, ':', true);
 		}
 
 		if (node->type == JSON_TYPE::OBJECT)
@@ -252,9 +252,9 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 				context->format = node->format;
 			}
 
-			json_EncoderAppend(context, '{', true);
-			json_EncodeNode((JSON_NODE*)node->value, context);
-			json_EncoderAppend(context, '}', true);
+			json_GeneratorAppend(context, '{', true);
+			json_GenerateText((JSON_NODE*)node->value, context);
+			json_GeneratorAppend(context, '}', true);
 
 			if (format) {
 				context->format = format;
@@ -268,9 +268,9 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 				context->format = node->format;
 			}
 
-			json_EncoderAppend(context, '[', true);
-			json_EncodeNode((JSON_NODE*)node->value, context);
-			json_EncoderAppend(context, ']', true);
+			json_GeneratorAppend(context, '[', true);
+			json_GenerateText((JSON_NODE*)node->value, context);
+			json_GeneratorAppend(context, ']', true);
 
 			if (format) {
 				context->format = format;
@@ -278,7 +278,7 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 		}
 		else if (node->type == JSON_TYPE::STRING)
 		{
-			json_EncoderAppend(context, '"', true);
+			json_GeneratorAppend(context, '"', true);
 
 			const CHAR* pValue = (const CHAR*)node->value;
 			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
@@ -297,12 +297,12 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 				case 0x0A: // n line feed
 				case 0x0D: // r carriage return
 				case 0x09: // t tab
-					json_EncoderAppend(context, '\\', false);
+					json_GeneratorAppend(context, '\\', false);
 				default:
 					break;
 				}
 
-				json_EncoderAppend(context, CodePoint, false);
+				json_GeneratorAppend(context, CodePoint, false);
 
 				pValue += CharUnits;
 
@@ -310,7 +310,7 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 				CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
 			}
 
-			json_EncoderAppend(context, '"', true);
+			json_GeneratorAppend(context, '"', true);
 		}
 		else if (node->type == JSON_TYPE::NUMBER)
 		{
@@ -320,7 +320,7 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 
 			while (CodePoint != '\0')
 			{
-				json_EncoderAppend(context, CodePoint, false);
+				json_GeneratorAppend(context, CodePoint, false);
 
 				pValue += CharUnits;
 
@@ -333,23 +333,23 @@ CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
 			bool bValue = (bool)node->value;
 
 			if (bValue) {
-				json_EncoderAppend(context, 't', false);
-				json_EncoderAppend(context, 'r', false);
-				json_EncoderAppend(context, 'u', false);
-				json_EncoderAppend(context, 'e', false);
+				json_GeneratorAppend(context, 't', false);
+				json_GeneratorAppend(context, 'r', false);
+				json_GeneratorAppend(context, 'u', false);
+				json_GeneratorAppend(context, 'e', false);
 			}
 			else {
-				json_EncoderAppend(context, 'f', false);
-				json_EncoderAppend(context, 'a', false);
-				json_EncoderAppend(context, 'l', false);
-				json_EncoderAppend(context, 's', false);
-				json_EncoderAppend(context, 'e', false);
+				json_GeneratorAppend(context, 'f', false);
+				json_GeneratorAppend(context, 'a', false);
+				json_GeneratorAppend(context, 'l', false);
+				json_GeneratorAppend(context, 's', false);
+				json_GeneratorAppend(context, 'e', false);
 			}
 		}
 
 		node = node->next;
 		if (node != NULL) {
-			json_EncoderAppend(context, ',', true);
+			json_GeneratorAppend(context, ',', true);
 		}
 	}
 
@@ -1173,9 +1173,9 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 // **   JSON functions   ** //
 // ------------------------ //
 
-CHAR* json_plus::JSON_Encode(JSON_NODE* json_root, const CHAR* format)
+CHAR* json_plus::JSON_Generate(JSON_NODE* json_root, const CHAR* format)
 {
-	JSON_ENCODE_CONTEXT context;
+	JSON_GENERATOR_CONTEXT context;
 
 	if (json_root == NULL) {
 		return NULL;
@@ -1192,17 +1192,17 @@ CHAR* json_plus::JSON_Encode(JSON_NODE* json_root, const CHAR* format)
 	{
 		if (json_root->type == JSON_TYPE::OBJECT)
 		{
-			json_EncoderAppend(&context, '{', true);
-			json_EncodeNode((JSON_NODE*)json_root->value, &context);
-			json_EncoderAppend(&context, '}', true);
-			json_EncoderAppend(&context, '\0', false);
+			json_GeneratorAppend(&context, '{', true);
+			json_GenerateText((JSON_NODE*)json_root->value, &context);
+			json_GeneratorAppend(&context, '}', true);
+			json_GeneratorAppend(&context, '\0', false);
 		}
 		else if (json_root->type == JSON_TYPE::ARRAY)
 		{
-			json_EncoderAppend(&context, '[', true);
-			json_EncodeNode((JSON_NODE*)json_root->value, &context);
-			json_EncoderAppend(&context, ']', true);
-			json_EncoderAppend(&context, '\0', false);
+			json_GeneratorAppend(&context, '[', true);
+			json_GenerateText((JSON_NODE*)json_root->value, &context);
+			json_GeneratorAppend(&context, ']', true);
+			json_GeneratorAppend(&context, '\0', false);
 		}
 	}
 
@@ -2349,9 +2349,9 @@ JSON_NODE* JSON_OBJECT::Insert::Number::String(const CHAR* key, const CHAR* valu
 	return node;
 }
 
-CHAR* JSON_OBJECT::Encode(const CHAR* format)
+CHAR* JSON_OBJECT::Generate(const CHAR* format)
 {
-	return JSON_Encode(this->json_root, format);
+	return JSON_Generate(this->json_root, format);
 }
 
 bool JSON_OBJECT::FormatOverride(const CHAR* format)
@@ -2806,9 +2806,9 @@ JSON_NODE* JSON_ARRAY::Insert::Number::String(const CHAR* value)
 	return node;
 }
 
-CHAR* JSON_ARRAY::Encode(const CHAR* format)
+CHAR* JSON_ARRAY::Generate(const CHAR* format)
 {
-	return JSON_Encode(this->json_root, format);
+	return JSON_Generate(this->json_root, format);
 }
 
 bool JSON_ARRAY::FormatOverride(const CHAR* format)

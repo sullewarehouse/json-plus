@@ -62,7 +62,7 @@ CHAR* create_json_string()
 		json_file.Insert.String("type", "accounts");
 
 		// Create the json string from the object
-		json_string = json_file.Encode(",\n {\n}");
+		json_string = json_file.Generate(",\n {\n}");
 	}
 
 	// Free json resources
