@@ -2,7 +2,7 @@
 
 **json_plus::JSON_Encode(json_root, format)**
 
-Create a JSON node.
+Create a JSON string from a node tree.
 
 ***json_root***  
 The root JSON node. This can be an object or array node.
