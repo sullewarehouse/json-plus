@@ -140,7 +140,10 @@ namespace json_plus
 		const CHAR* errorTokens;
 	};
 
-	// Parse a JSON string
+	// Create JSON string from node tree
+	CHAR* JSON_Encode(JSON_NODE* json_root, const CHAR* format);
+
+	// Parse a JSON string and create a node tree
 	JSON_NODE* JSON_Parse(const CHAR* json, JSON_PARSER_CONTEXT* context);
 
 	// Free a JSON node tree

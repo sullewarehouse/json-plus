@@ -8,6 +8,7 @@ Check **`example.cpp`** for a detailed example that creates a json string, parse
 
 ## Functions
 
+- [JSON_Encode](docs/JSON_Encode.md)
 - [JSON_Parse](docs/JSON_Parse.md)
 - [JSON_Free](docs/JSON_Free.md)
 - [JSON_GetObject](docs/JSON_GetObject.md)

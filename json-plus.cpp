@@ -24,6 +24,18 @@ using namespace json_plus;
 // Increasing this number may result in faster encoding but will use more memory
 #define JSON_ENCODER_BUFFER_INCREASE 32
 
+// JSON encoder context
+struct JSON_ENCODE_CONTEXT
+{
+	bool error;
+	CHAR* buffer;
+	size_t bufferLength;
+	size_t index;
+	const CHAR* format;
+	long indentation;
+	jmp_buf env;
+};
+
 // JSON error strings
 static const CHAR* JSON_ERROR_STRINGS[] =
 {
@@ -66,6 +78,288 @@ static const CHAR* JSON_ERROR_STRINGS[] =
 	"syntax error, expected a NULL value"
 };
 
+// ---------------------- //
+// **   JSON encoder   ** //
+// ---------------------- //
+
+// Forward declaration of json_EncoderIndentation
+// Output tabs for a line, this is automatically enabled when a format string is provided
+void json_EncoderIndentation(JSON_ENCODE_CONTEXT* context);
+
+// -------------------------------- //
+// **   JSON encoder functions   ** //
+// -------------------------------- //
+
+// Append a new character to the JSON string buffer
+// If `format` is true then the function checks formatting parameters
+void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool format)
+{
+	UCHAR CharUnits;
+	const CHAR* pFormatString;
+	ULONG FormatChar;
+	UCHAR FormatCharUnits;
+	ULONG newLines;
+
+	pFormatString = NULL;
+	FormatChar = 0;
+	FormatCharUnits = 0;
+
+	if ((format) && (context->format != NULL))
+	{
+		if (CodePoint == '}') {
+			context->indentation--;
+		}
+
+		newLines = 0;
+
+		pFormatString = context->format;
+		while (*pFormatString != '\0')
+		{
+			FormatCharUnits = UTF8_Encoding::GetCharacterUnits(*pFormatString);
+			FormatChar = UTF8_Encoding::Decode(FormatCharUnits, pFormatString);
+
+			if (FormatChar == '\n') {
+				newLines++;
+			}
+			else if (FormatChar == CodePoint) {
+				for (ULONG i = 0; i < newLines; i++) {
+					json_EncoderAppend(context, '\n', false);
+					json_EncoderIndentation(context);
+				}
+				break;
+			}
+			else {
+				newLines = 0;
+			}
+
+			pFormatString += FormatCharUnits;
+		}
+	}
+
+	CharUnits = UTF8_Encoding::EncodeUnsafe(NULL, CodePoint);
+
+	// buffer big enough for CodePoint + NULL character ?
+	if ((context->index + CharUnits + 1) >= context->bufferLength)
+	{
+		context->bufferLength += JSON_ENCODER_BUFFER_INCREASE;
+		CHAR* pNewBuffer = (CHAR*)realloc(context->buffer, context->bufferLength);
+		if (pNewBuffer != NULL) {
+			context->buffer = pNewBuffer;
+		}
+		else {
+			context->error = true;
+			longjmp(context->env, 1);
+		}
+	}
+
+	context->index += UTF8_Encoding::EncodeUnsafe(&context->buffer[context->index], CodePoint);
+
+	if ((format) && (context->format != NULL))
+	{
+		if (CodePoint == '{') {
+			context->indentation++;
+		}
+
+		if (FormatChar == CodePoint)
+		{
+			newLines = 0;
+			pFormatString += FormatCharUnits;
+
+			while (true)
+			{
+				FormatCharUnits = UTF8_Encoding::GetCharacterUnits(*pFormatString);
+				FormatChar = UTF8_Encoding::Decode(FormatCharUnits, pFormatString);
+
+				if (FormatChar == '\n') {
+					newLines++;
+				}
+				else {
+					for (ULONG i = 0; i < newLines; i++) {
+						json_EncoderAppend(context, '\n', false);
+						json_EncoderIndentation(context);
+					}
+					break;
+				}
+
+				pFormatString += FormatCharUnits;
+			}
+		}
+	}
+}
+
+void json_EncoderIndentation(JSON_ENCODE_CONTEXT* context)
+{
+	for (long i = 0; i < context->indentation; i++)
+	{
+		json_EncoderAppend(context, '\t', false);
+	}
+}
+
+// Recursive JSON node encoder
+CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
+{
+	UCHAR CharUnits;
+	ULONG CodePoint;
+	JSON_NODE* node;
+	const CHAR* format;
+
+	node = json_node;
+	while (node != NULL)
+	{
+		if (node->key != NULL)
+		{
+			json_EncoderAppend(context, '"', true);
+
+			const CHAR* pKey = node->key;
+			CharUnits = UTF8_Encoding::GetCharacterUnits(*pKey);
+			CodePoint = UTF8_Encoding::Decode(CharUnits, pKey);
+
+			while (CodePoint != '\0')
+			{
+				// Escape special characters
+				switch (CodePoint)
+				{
+				case 0x22: // " quotation mark
+				case 0x5C: // \ reverse solidus
+				case 0x2F: // / solidus
+				case 0x08: // b backspace
+				case 0x0C: // f form feed
+				case 0x0A: // n line feed
+				case 0x0D: // r carriage return
+				case 0x09: // t tab
+					json_EncoderAppend(context, '\\', false);
+				default:
+					break;
+				}
+
+				json_EncoderAppend(context, CodePoint, false);
+
+				pKey += CharUnits;
+
+				CharUnits = UTF8_Encoding::GetCharacterUnits(*pKey);
+				CodePoint = UTF8_Encoding::Decode(CharUnits, pKey);
+			}
+
+			json_EncoderAppend(context, '"', true);
+			json_EncoderAppend(context, ':', true);
+		}
+
+		if (node->type == JSON_TYPE::OBJECT)
+		{
+			format = NULL;
+			if (node->format) {
+				format = context->format;
+				context->format = node->format;
+			}
+
+			json_EncoderAppend(context, '{', true);
+			json_EncodeNode((JSON_NODE*)node->value, context);
+			json_EncoderAppend(context, '}', true);
+
+			if (format) {
+				context->format = format;
+			}
+		}
+		else if (node->type == JSON_TYPE::ARRAY)
+		{
+			format = NULL;
+			if (node->format) {
+				format = context->format;
+				context->format = node->format;
+			}
+
+			json_EncoderAppend(context, '[', true);
+			json_EncodeNode((JSON_NODE*)node->value, context);
+			json_EncoderAppend(context, ']', true);
+
+			if (format) {
+				context->format = format;
+			}
+		}
+		else if (node->type == JSON_TYPE::STRING)
+		{
+			json_EncoderAppend(context, '"', true);
+
+			const CHAR* pValue = (const CHAR*)node->value;
+			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
+			CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
+
+			while (CodePoint != '\0')
+			{
+				// Escape special characters
+				switch (CodePoint)
+				{
+				case 0x22: // " quotation mark
+				case 0x5C: // \ reverse solidus
+				case 0x2F: // / solidus
+				case 0x08: // b backspace
+				case 0x0C: // f form feed
+				case 0x0A: // n line feed
+				case 0x0D: // r carriage return
+				case 0x09: // t tab
+					json_EncoderAppend(context, '\\', false);
+				default:
+					break;
+				}
+
+				json_EncoderAppend(context, CodePoint, false);
+
+				pValue += CharUnits;
+
+				CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
+				CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
+			}
+
+			json_EncoderAppend(context, '"', true);
+		}
+		else if (node->type == JSON_TYPE::NUMBER)
+		{
+			const CHAR* pValue = (const CHAR*)node->value;
+			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
+			CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
+
+			while (CodePoint != '\0')
+			{
+				json_EncoderAppend(context, CodePoint, false);
+
+				pValue += CharUnits;
+
+				CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
+				CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
+			}
+		}
+		else if (node->type == JSON_TYPE::BOOLEAN)
+		{
+			bool bValue = (bool)node->value;
+
+			if (bValue) {
+				json_EncoderAppend(context, 't', false);
+				json_EncoderAppend(context, 'r', false);
+				json_EncoderAppend(context, 'u', false);
+				json_EncoderAppend(context, 'e', false);
+			}
+			else {
+				json_EncoderAppend(context, 'f', false);
+				json_EncoderAppend(context, 'a', false);
+				json_EncoderAppend(context, 'l', false);
+				json_EncoderAppend(context, 's', false);
+				json_EncoderAppend(context, 'e', false);
+			}
+		}
+
+		node = node->next;
+		if (node != NULL) {
+			json_EncoderAppend(context, ',', true);
+		}
+	}
+
+	return NULL;
+}
+
+// ------------------------------ //
+// **   Forward declarations   ** //
+// ------------------------------ //
+
 // Parse JSON string
 CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
 
@@ -83,6 +377,10 @@ JSON_NODE* json_ParseArray(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
 
 // Parse JSON object
 JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context);
+
+// --------------------------------------- //
+// **   Internal JSON parse functions   ** //
+// --------------------------------------- //
 
 // Get the next token in the JSON string
 JSON_TOKEN json_GetToken(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
@@ -189,10 +487,6 @@ getCodePoint:
 
 	return token;
 }
-
-// --------------------------------------- //
-// **   Internal JSON parse functions   ** //
-// --------------------------------------- //
 
 // Parse a JSON string (key or value)
 CHAR* json_ParseString(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
@@ -879,6 +1173,42 @@ JSON_NODE* json_ParseObject(CHAR** pp_json, JSON_PARSER_CONTEXT* context)
 // **   JSON functions   ** //
 // ------------------------ //
 
+CHAR* json_plus::JSON_Encode(JSON_NODE* json_root, const CHAR* format)
+{
+	JSON_ENCODE_CONTEXT context;
+
+	if (json_root == NULL) {
+		return NULL;
+	}
+
+	context.error = false;
+	context.buffer = NULL;
+	context.bufferLength = 0;
+	context.index = 0;
+	context.format = format;
+	context.indentation = 0;
+
+	if (setjmp(context.env) == 0)
+	{
+		if (json_root->type == JSON_TYPE::OBJECT)
+		{
+			json_EncoderAppend(&context, '{', true);
+			json_EncodeNode((JSON_NODE*)json_root->value, &context);
+			json_EncoderAppend(&context, '}', true);
+			json_EncoderAppend(&context, '\0', false);
+		}
+		else if (json_root->type == JSON_TYPE::ARRAY)
+		{
+			json_EncoderAppend(&context, '[', true);
+			json_EncodeNode((JSON_NODE*)json_root->value, &context);
+			json_EncoderAppend(&context, ']', true);
+			json_EncoderAppend(&context, '\0', false);
+		}
+	}
+
+	return context.buffer;
+}
+
 JSON_NODE* json_plus::JSON_Parse(const CHAR* pJson, JSON_PARSER_CONTEXT* context)
 {
 	JSON_TOKEN token;
@@ -1513,296 +1843,6 @@ LONG UTF8_Encoding::CompareStringsInsensitive(const CHAR* String1, const CHAR* S
 	}
 }
 
-// ---------------------- //
-// **   JSON encoder   ** //
-// ---------------------- //
-
-// JSON encoder context
-struct JSON_ENCODE_CONTEXT
-{
-	bool error;
-	CHAR* buffer;
-	size_t bufferLength;
-	size_t index;
-	const CHAR* format;
-	long indentation;
-	jmp_buf env;
-};
-
-// Forward declaration of json_EncoderIndentation
-// Output tabs for a line, this is automatically enabled when a format string is provided
-void json_EncoderIndentation(JSON_ENCODE_CONTEXT* context);
-
-// -------------------------------- //
-// **   JSON encoder functions   ** //
-// -------------------------------- //
-
-// Append a new character to the JSON string buffer
-// If `format` is true then the function checks formatting parameters
-void json_EncoderAppend(JSON_ENCODE_CONTEXT* context, ULONG CodePoint, bool format)
-{
-	UCHAR CharUnits;
-	const CHAR* pFormatString;
-	ULONG FormatChar;
-	UCHAR FormatCharUnits;
-	ULONG newLines;
-
-	pFormatString = NULL;
-	FormatChar = 0;
-	FormatCharUnits = 0;
-
-	if ((format) && (context->format != NULL))
-	{
-		if (CodePoint == '}') {
-			context->indentation--;
-		}
-
-		newLines = 0;
-
-		pFormatString = context->format;
-		while (*pFormatString != '\0')
-		{
-			FormatCharUnits = UTF8_Encoding::GetCharacterUnits(*pFormatString);
-			FormatChar = UTF8_Encoding::Decode(FormatCharUnits, pFormatString);
-
-			if (FormatChar == '\n') {
-				newLines++;
-			}
-			else if (FormatChar == CodePoint) {
-				for (ULONG i = 0; i < newLines; i++) {
-					json_EncoderAppend(context, '\n', false);
-					json_EncoderIndentation(context);
-				}
-				break;
-			}
-			else {
-				newLines = 0;
-			}
-
-			pFormatString += FormatCharUnits;
-		}
-	}
-
-	CharUnits = UTF8_Encoding::EncodeUnsafe(NULL, CodePoint);
-
-	// buffer big enough for CodePoint + NULL character ?
-	if ((context->index + CharUnits + 1) >= context->bufferLength)
-	{
-		context->bufferLength += JSON_ENCODER_BUFFER_INCREASE;
-		CHAR* pNewBuffer = (CHAR*)realloc(context->buffer, context->bufferLength);
-		if (pNewBuffer != NULL) {
-			context->buffer = pNewBuffer;
-		}
-		else {
-			context->error = true;
-			longjmp(context->env, 1);
-		}
-	}
-
-	context->index += UTF8_Encoding::EncodeUnsafe(&context->buffer[context->index], CodePoint);
-
-	if ((format) && (context->format != NULL))
-	{
-		if (CodePoint == '{') {
-			context->indentation++;
-		}
-
-		if (FormatChar == CodePoint)
-		{
-			newLines = 0;
-			pFormatString += FormatCharUnits;
-
-			while (true)
-			{
-				FormatCharUnits = UTF8_Encoding::GetCharacterUnits(*pFormatString);
-				FormatChar = UTF8_Encoding::Decode(FormatCharUnits, pFormatString);
-
-				if (FormatChar == '\n') {
-					newLines++;
-				}
-				else {
-					for (ULONG i = 0; i < newLines; i++) {
-						json_EncoderAppend(context, '\n', false);
-						json_EncoderIndentation(context);
-					}
-					break;
-				}
-
-				pFormatString += FormatCharUnits;
-			}
-		}
-	}
-}
-
-void json_EncoderIndentation(JSON_ENCODE_CONTEXT* context)
-{
-	for (long i = 0; i < context->indentation; i++)
-	{
-		json_EncoderAppend(context, '\t', false);
-	}
-}
-
-// Recursive JSON node encoder
-CHAR* json_EncodeNode(JSON_NODE* json_node, JSON_ENCODE_CONTEXT* context)
-{
-	UCHAR CharUnits;
-	ULONG CodePoint;
-	JSON_NODE* node;
-	const CHAR* format;
-
-	node = json_node;
-	while (node != NULL)
-	{
-		if (node->key != NULL)
-		{
-			json_EncoderAppend(context, '"', true);
-
-			const CHAR* pKey = node->key;
-			CharUnits = UTF8_Encoding::GetCharacterUnits(*pKey);
-			CodePoint = UTF8_Encoding::Decode(CharUnits, pKey);
-
-			while (CodePoint != '\0')
-			{
-				// Escape special characters
-				switch (CodePoint)
-				{
-				case 0x22: // " quotation mark
-				case 0x5C: // \ reverse solidus
-				case 0x2F: // / solidus
-				case 0x08: // b backspace
-				case 0x0C: // f form feed
-				case 0x0A: // n line feed
-				case 0x0D: // r carriage return
-				case 0x09: // t tab
-					json_EncoderAppend(context, '\\', false);
-				default:
-					break;
-				}
-
-				json_EncoderAppend(context, CodePoint, false);
-
-				pKey += CharUnits;
-
-				CharUnits = UTF8_Encoding::GetCharacterUnits(*pKey);
-				CodePoint = UTF8_Encoding::Decode(CharUnits, pKey);
-			}
-
-			json_EncoderAppend(context, '"', true);
-			json_EncoderAppend(context, ':', true);
-		}
-
-		if (node->type == JSON_TYPE::OBJECT)
-		{
-			format = NULL;
-			if (node->format) {
-				format = context->format;
-				context->format = node->format;
-			}
-
-			json_EncoderAppend(context, '{', true);
-			json_EncodeNode((JSON_NODE*)node->value, context);
-			json_EncoderAppend(context, '}', true);
-
-			if (format) {
-				context->format = format;
-			}
-		}
-		else if (node->type == JSON_TYPE::ARRAY)
-		{
-			format = NULL;
-			if (node->format) {
-				format = context->format;
-				context->format = node->format;
-			}
-
-			json_EncoderAppend(context, '[', true);
-			json_EncodeNode((JSON_NODE*)node->value, context);
-			json_EncoderAppend(context, ']', true);
-
-			if (format) {
-				context->format = format;
-			}
-		}
-		else if (node->type == JSON_TYPE::STRING)
-		{
-			json_EncoderAppend(context, '"', true);
-
-			const CHAR* pValue = (const CHAR*)node->value;
-			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
-			CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
-
-			while (CodePoint != '\0')
-			{
-				// Escape special characters
-				switch (CodePoint)
-				{
-				case 0x22: // " quotation mark
-				case 0x5C: // \ reverse solidus
-				case 0x2F: // / solidus
-				case 0x08: // b backspace
-				case 0x0C: // f form feed
-				case 0x0A: // n line feed
-				case 0x0D: // r carriage return
-				case 0x09: // t tab
-					json_EncoderAppend(context, '\\', false);
-				default:
-					break;
-				}
-
-				json_EncoderAppend(context, CodePoint, false);
-
-				pValue += CharUnits;
-
-				CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
-				CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
-			}
-
-			json_EncoderAppend(context, '"', true);
-		}
-		else if (node->type == JSON_TYPE::NUMBER)
-		{
-			const CHAR* pValue = (const CHAR*)node->value;
-			CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
-			CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
-
-			while (CodePoint != '\0')
-			{
-				json_EncoderAppend(context, CodePoint, false);
-
-				pValue += CharUnits;
-
-				CharUnits = UTF8_Encoding::GetCharacterUnits(*pValue);
-				CodePoint = UTF8_Encoding::Decode(CharUnits, pValue);
-			}
-		}
-		else if (node->type == JSON_TYPE::BOOLEAN)
-		{
-			bool bValue = (bool)node->value;
-
-			if (bValue) {
-				json_EncoderAppend(context, 't', false);
-				json_EncoderAppend(context, 'r', false);
-				json_EncoderAppend(context, 'u', false);
-				json_EncoderAppend(context, 'e', false);
-			}
-			else {
-				json_EncoderAppend(context, 'f', false);
-				json_EncoderAppend(context, 'a', false);
-				json_EncoderAppend(context, 'l', false);
-				json_EncoderAppend(context, 's', false);
-				json_EncoderAppend(context, 'e', false);
-			}
-		}
-
-		node = node->next;
-		if (node != NULL) {
-			json_EncoderAppend(context, ',', true);
-		}
-	}
-
-	return NULL;
-}
-
 // ----------------------------- //
 // **   JSON_OBJECT methods   ** //
 // ----------------------------- //
@@ -2311,24 +2351,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::String(const CHAR* key, const CHAR* valu
 
 CHAR* JSON_OBJECT::Encode(const CHAR* format)
 {
-	JSON_ENCODE_CONTEXT context;
-
-	context.error = false;
-	context.buffer = NULL;
-	context.bufferLength = 0;
-	context.index = 0;
-	context.format = format;
-	context.indentation = 0;
-
-	if (setjmp(context.env) == 0)
-	{
-		json_EncoderAppend(&context, '{', true);
-		json_EncodeNode((JSON_NODE*)this->json_root->value, &context);
-		json_EncoderAppend(&context, '}', true);
-		json_EncoderAppend(&context, '\0', false);
-	}
-
-	return context.buffer;
+	return JSON_Encode(this->json_root, format);
 }
 
 bool JSON_OBJECT::FormatOverride(const CHAR* format)
@@ -2785,24 +2808,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::String(const CHAR* value)
 
 CHAR* JSON_ARRAY::Encode(const CHAR* format)
 {
-	JSON_ENCODE_CONTEXT context;
-
-	context.error = false;
-	context.buffer = NULL;
-	context.bufferLength = 0;
-	context.index = 0;
-	context.format = format;
-	context.indentation = 0;
-
-	if (setjmp(context.env) == 0)
-	{
-		json_EncoderAppend(&context, '[', true);
-		json_EncodeNode((JSON_NODE*)this->json_root->value, &context);
-		json_EncoderAppend(&context, ']', true);
-		json_EncoderAppend(&context, '\0', false);
-	}
-
-	return context.buffer;
+	return JSON_Encode(this->json_root, format);
 }
 
 bool JSON_ARRAY::FormatOverride(const CHAR* format)
