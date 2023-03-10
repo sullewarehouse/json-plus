@@ -85,6 +85,18 @@ namespace json_plus
 		JSON_TYPE type;
 		// Format override for the node
 		const char* format;
+		// Get value as a char* string
+		const char* String();
+		// Get value as a double
+		double Double();
+		// Get value as a int
+		int Int();
+		// Get value as a long
+		long Long();
+		// Get value as a long long (64-bit int)
+		long long Int64();
+		// Get value as a boolean
+		bool Boolean();
 	};
 
 	// JSON error codes
@@ -177,8 +189,6 @@ namespace json_plus
 	private:
 		// Object root node
 		JSON_NODE* json_root;
-		// Number of items in the object
-		unsigned long count;
 	public:
 		// Default initializer
 		JSON_OBJECT();
@@ -192,6 +202,8 @@ namespace json_plus
 		bool Empty();
 		// Get the number of items in the object
 		unsigned long Count();
+		// Get the first node item in the object
+		JSON_NODE* First();
 		// Get an object from the object using a key
 		JSON_OBJECT Object(const char* key);
 		// Get an array from the object using a key
@@ -276,8 +288,6 @@ namespace json_plus
 	private:
 		// Array root node
 		JSON_NODE* json_root;
-		// Number of items in the array
-		unsigned long count;
 	public:
 		// Default initializer
 		JSON_ARRAY();
@@ -291,6 +301,8 @@ namespace json_plus
 		bool Empty();
 		// Get the number of items in the array
 		unsigned long Count();
+		// Get the first node item in the array
+		JSON_NODE* First();
 		// Get an object from the array using an index
 		JSON_OBJECT Object(unsigned long i);
 		// Get an array from the array using an index

@@ -80,6 +80,64 @@ static const char* JSON_ERROR_STRINGS[] =
 	"syntax error, expected a NULL value"
 };
 
+// ---------------------------- //
+// **   _JSON_NODE methods   ** //
+// ---------------------------- //
+
+const char* _JSON_NODE::String()
+{
+	if (this->type == JSON_TYPE::STRING) {
+		return (const char*)this->value;
+	}
+
+	return NULL;
+}
+
+bool _JSON_NODE::Boolean()
+{
+	if (this->type == JSON_TYPE::BOOLEAN) {
+		return (bool)this->value;
+	}
+
+	return false;
+}
+
+double _JSON_NODE::Double()
+{
+	if (this->type == JSON_TYPE::NUMBER) {
+		return atof((char*)this->value);
+	}
+
+	return 0.0f;
+}
+
+int _JSON_NODE::Int()
+{
+	if (this->type == JSON_TYPE::NUMBER) {
+		return atoi((char*)this->value);
+	}
+
+	return 0;
+}
+
+long _JSON_NODE::Long()
+{
+	if (this->type == JSON_TYPE::NUMBER) {
+		return atol((char*)this->value);
+	}
+
+	return 0;
+}
+
+long long _JSON_NODE::Int64()
+{
+	if (this->type == JSON_TYPE::NUMBER) {
+		return atoll((char*)this->value);
+	}
+
+	return 0;
+}
+
 // ------------------------ //
 // **   JSON generator   ** //
 // ------------------------ //
@@ -1850,12 +1908,10 @@ long UTF8_Encoding::CompareStringsInsensitive(const char* String1, const char* S
 // ----------------------------- //
 
 JSON_OBJECT::JSON_OBJECT() {
-	this->count = 0;
 	this->json_root = NULL;
 }
 
 JSON_OBJECT::JSON_OBJECT(JSON_NODE* root) {
-	this->count = 0;
 	this->json_root = root;
 }
 
@@ -1880,10 +1936,10 @@ bool JSON_OBJECT::Empty() {
 
 unsigned long JSON_OBJECT::Count()
 {
-	if (this->count != 0) {
-		return this->count;
-	}
-	else if (this->json_root != NULL)
+	unsigned long count;
+
+	count = 0;
+	if (this->json_root != NULL)
 	{
 		JSON_NODE* node;
 
@@ -1891,11 +1947,20 @@ unsigned long JSON_OBJECT::Count()
 		while (node != NULL)
 		{
 			node = node->next;
-			this->count++;
+			count++;
 		}
 	}
 
-	return this->count;
+	return count;
+}
+
+JSON_NODE* JSON_OBJECT::First()
+{
+	if (this->json_root != NULL) {
+		return (JSON_NODE*)this->json_root->value;
+	}
+
+	return NULL;
 }
 
 JSON_OBJECT JSON_OBJECT::Object(const char* key)
@@ -2371,12 +2436,10 @@ bool JSON_OBJECT::FormatOverride(const char* format)
 // ---------------------------- //
 
 JSON_ARRAY::JSON_ARRAY() {
-	this->count = 0;
 	this->json_root = NULL;
 }
 
 JSON_ARRAY::JSON_ARRAY(JSON_NODE* root) {
-	this->count = 0;
 	this->json_root = root;
 }
 
@@ -2401,10 +2464,10 @@ bool JSON_ARRAY::Empty() {
 
 unsigned long JSON_ARRAY::Count()
 {
-	if (this->count != 0) {
-		return this->count;
-	}
-	else if (this->json_root != NULL)
+	unsigned long count;
+
+	count = 0;
+	if (this->json_root != NULL)
 	{
 		JSON_NODE* node;
 
@@ -2412,11 +2475,20 @@ unsigned long JSON_ARRAY::Count()
 		while (node != NULL)
 		{
 			node = node->next;
-			this->count++;
+			count++;
 		}
 	}
 
-	return this->count;
+	return count;
+}
+
+JSON_NODE* JSON_ARRAY::First()
+{
+	if (this->json_root != NULL) {
+		return (JSON_NODE*)this->json_root->value;
+	}
+
+	return NULL;
 }
 
 JSON_OBJECT JSON_ARRAY::Object(unsigned long i)

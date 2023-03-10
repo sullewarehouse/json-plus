@@ -15,7 +15,8 @@
 #include "json-plus.h"
 using namespace json_plus;
 
-// This function is an example of creating a json string from a json node tree
+// This function is an example of creating a JSON node tree using JSON_OBJECT and JSON_ARRAY classes, -
+// then generating and returning a JSON string
 char* create_json_string()
 {
 	JSON_OBJECT json_file;
@@ -42,10 +43,10 @@ char* create_json_string()
 
 		// Add random number array
 		JSON_ARRAY random_numbers = json_file.Insert.Array("random_numbers");
-		random_numbers.Insert.Number.Int(rand());
-		random_numbers.Insert.Number.Int(rand());
-		random_numbers.Insert.Number.Int(rand());
-		random_numbers.Insert.Number.Int(rand());
+		random_numbers.Insert.Number.Int(463);
+		random_numbers.Insert.Number.Int(9273);
+		random_numbers.Insert.Number.Int(52);
+		random_numbers.Insert.Number.Int(20192);
 
 		// Override the format so the "random_numbers" array is on a single line
 		random_numbers.FormatOverride("");
@@ -63,15 +64,16 @@ char* create_json_string()
 		json_string = json_file.Generate(",\n {\n}");
 	}
 
-	// Free json resources
+	// Free json resources (node tree)
 	JSON_Free(json_file);
 
 	// Return the json string
 	return json_string;
 }
 
-// This example calls the create_json_string() function then walks the json data
-int wmain()
+// The main entry point calls the create_json_string() function to create a JSON string, -
+// then call JSON_Parse to create the node tree. We use JSON_OBJECT and JSON_ARRAY classes to get the JSON values
+int main()
 {
 	// Create a json string
 	char* json_string = create_json_string();
@@ -104,16 +106,34 @@ int wmain()
 		// Print members
 		printf("type: %s\ncount: %d\nencrypted: %s\npath: %s\n", type, count, encrypted ? "true" : "false", path);
 
+		// Get random_numbers array from the object
+		JSON_ARRAY random_numbers = json_file.Array("random_numbers");
+		if (!random_numbers.Empty())
+		{
+			// for each number
+			for (JSON_NODE* node = random_numbers.First(); node != NULL; node = node->next)
+			{
+				// Get int from node
+				int number = node->Int();
+				// Print random number
+				printf("%d", number);
+				if (node->next != NULL) {
+					printf("%s", ", ");
+				}
+				else {
+					printf("%s", "\n");
+				}
+			}
+		}
+
 		// Get users array from the object
 		JSON_ARRAY users = json_file.Array("users");
 		if (!users.Empty())
 		{
-			// Walk the array
-			for (unsigned long i = 0; i < users.Count(); i++)
+			// for each user object
+			for (JSON_NODE* node = users.First(); node != NULL; node = node->next)
 			{
-				// Get user object
-				JSON_OBJECT account = users.Object(i);
-
+				JSON_OBJECT account = node;
 				if (!account.Empty()) {
 					// Print user info
 					printf("username: %s balance: %f\n", account.String("username"), account.Number.Double("balance"));

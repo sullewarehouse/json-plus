@@ -32,6 +32,7 @@ const CHAR* username = json_file.String("username");
 Members:
 - Empty
 - Count
+- First
 - Object
 - Array
 - String
