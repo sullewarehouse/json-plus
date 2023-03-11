@@ -49,7 +49,7 @@ JSON_OBJECT json_file = JSON_Parse(json_string, &context);
 const CHAR* username = json_file.String("username");
 ```
 
-[JSON_OBJECT and JSON_ARRAY classes](docs/JSON_OBJECT-and-JSON_ARRAY.md)
+[JSON_OBJECT and JSON_ARRAY classes](docs/JSON_OBJECT-&-JSON_ARRAY.md)
 
 ## JSON resources
 
