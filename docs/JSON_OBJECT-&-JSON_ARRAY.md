@@ -1,32 +1,32 @@
 # JSON_OBJECT and JSON_ARRAY
 
 Class Functions:
-- [Empty](##-Empty)
-- [Count](##-Count)
-- [First](##-First)
-- [Object](##-Object)
-- [Array](##-Array)
-- [String](##-String)
-- [Boolean](##-Boolean)
-- [Number Class](##-Number)
-  - [Double](##-Number)
-  - [Int](##-Number)
-  - [Long](##-Number)
-  - [Int64](##-Number)
-  - [String](##-Number)
-- [Insert Class](##-Insert)
-  - [Object](##-Insert)
-  - [Array](##-Insert)
-  - [String](##-Insert)
-  - [Boolean](##-Insert)
-  - [Number Class](###-Insert-Number-Class)
-    - [Double](###-Insert-Number-Class)
-    - [Int](###-Insert-Number-Class)
-    - [Long](###-Insert-Number-Class)
-    - [Int64](###-Insert-Number-Class)
-    - [String](###-Insert-Number-Class)
-- [Generate](##-Generate)
-- [FormatOverride](##-FormatOverride)
+- [Empty](##Empty)
+- [Count](##Count)
+- [First](##First)
+- [Object](##Object)
+- [Array](##Array)
+- [String](##String)
+- [Boolean](##Boolean)
+- [Number Class](##Number)
+  - [Double](##Number)
+  - [Int](##Number)
+  - [Long](##Number)
+  - [Int64](##Number)
+  - [String](##Number)
+- [Insert Class](##Insert)
+  - [Object](##Insert)
+  - [Array](##Insert)
+  - [String](##Insert)
+  - [Boolean](##Insert)
+  - [Number Class](###Insert-Number-Class)
+    - [Double](###Insert-Number-Class)
+    - [Int](###Insert-Number-Class)
+    - [Long](###Insert-Number-Class)
+    - [Int64](###Insert-Number-Class)
+    - [String](###Insert-Number-Class)
+- [Generate](##Generate)
+- [FormatOverride](##FormatOverride)
 
 ## Empty
 Returns false if the class does not have a JSON root node, true otherwise.
@@ -84,4 +84,4 @@ Insert an item. `JSON_OBJECT` takes a key as a parameter, `JSON_ARRAY` does not.
 Calls the [JSON_Generate](JSON_Generate.md) function.
 
 ## FormatOverride
-Sets the format override string for the object or array. The string is not copied so only pass a string that will still be allocated when you call JSON_Generate. See [JSON_Generate](JSON_Generate.md) for details about JSON formatting.
+Sets the format override string for the object or array. The string is not copied so only pass a string that will still be allocated when you call `JSON_Generate`. See [JSON_Generate](JSON_Generate.md) for details about JSON formatting.
