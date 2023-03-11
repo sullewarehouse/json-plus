@@ -1,4 +1,4 @@
-#JSON_OBJECT and JSON_ARRAY
+# JSON_OBJECT and JSON_ARRAY
 
 Class Functions:
 - [Empty](##Empty)
@@ -28,28 +28,28 @@ Class Functions:
 - [Generate](##Generate)
 - [FormatOverride](##FormatOverride)
 
-##Empty
+## Empty
 Returns false if the class does not have a JSON root node, true otherwise.
 
-##Count
+## Count
 Returns the number of items in the object or array.
 
-##First
+## First
 Returns the 1st item in the object or array.
 
-##Object
+## Object
 Get an object using a key (JSON_OBJECT) or index (JSON_ARRAY).
 
-##Array
+## Array
 Get an array using a key (JSON_OBJECT) or index (JSON_ARRAY).
 
-##String
+## String
 Get a string using a key (JSON_OBJECT) or index (JSON_ARRAY).
 
-##Boolean
+## Boolean
 Get a boolean using a key (JSON_OBJECT) or index (JSON_ARRAY).
 
-##Number
+## Number
 Get a number using a key (JSON_OBJECT) or index (JSON_ARRAY).
 
 | Function | Description |
@@ -60,7 +60,7 @@ Get a number using a key (JSON_OBJECT) or index (JSON_ARRAY).
 | Int64 | Returns the number as a long long (64-bit int) |
 | String | Returns the number as a string |
 
-##Insert
+## Insert
 Insert an item. `JSON_OBJECT` takes a key as a parameter, `JSON_ARRAY` does not.
 
 | Function | Description |
@@ -70,7 +70,7 @@ Insert an item. `JSON_OBJECT` takes a key as a parameter, `JSON_ARRAY` does not.
 | String | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
 | Boolean | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
 
-###Insert Number Class
+### Insert Number Class
 
 | Function | Description |
 | --- | --- |
@@ -80,8 +80,8 @@ Insert an item. `JSON_OBJECT` takes a key as a parameter, `JSON_ARRAY` does not.
 | Int64 | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
 | String | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
 
-##Generate
+## Generate
 Calls the [JSON_Generate](JSON_Generate.md) function.
 
-##FormatOverride
+## FormatOverride
 Sets the format override string for the object or array. The string is not copied so only pass a string that will still be allocated when you call JSON_Generate. See [JSON_Generate](JSON_Generate.md) for details about JSON formatting.
