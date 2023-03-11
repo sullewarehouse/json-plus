@@ -1,7 +1,7 @@
 # JSON_OBJECT and JSON_ARRAY
 
 Class Functions:
-- [Empty](##Empty)
+- [Empty](#Empty)
 - [Count](##Count)
 - [First](##First)
 - [Object](##Object)
