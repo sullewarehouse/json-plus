@@ -22,10 +22,13 @@ char* create_json_string()
 	JSON_OBJECT json_file;
 	char* json_string;
 
+	// Default return value
 	json_string = NULL;
 
-	// Create the root object node
-	json_file = JSON_CreateNode(JSON_TYPE::OBJECT, NULL, NULL);
+	// Create the root object
+	json_file.MakeRoot();
+
+	// Check if the object exists
 	if (!json_file.Empty())
 	{
 		// Create user object array
@@ -62,10 +65,10 @@ char* create_json_string()
 
 		// Create the json string from the object
 		json_string = json_file.Generate(",\n {\n}");
-	}
 
-	// Free json resources (node tree)
-	JSON_Free(json_file);
+		// Free json resources (node tree)
+		JSON_Free(json_file);
+	}
 
 	// Return the json string
 	return json_string;

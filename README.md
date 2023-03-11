@@ -1,10 +1,11 @@
 # json-plus
-JSON parser and encoder with UTF8 support.
+JSON parser and generator with UTF8 support.
 
-You do not need to compile anything to use json-plus, just include **`json-plus.cpp`** and **`json-plus.h`** in your application.
-Everything is contained in the **`json_plus`** namespace.
+You do not need to compile anything to use json-plus, just include **`json-plus.cpp`** and **`json-plus.h`** in your application. Everything is contained in the **`json_plus`** namespace.
 
-Check **`example.cpp`** for a detailed example that creates a json string, parses it and prints some details to the console.
+See **`example.cpp`** for a detailed example that creates a json string, parses it and prints to the console.
+
+json-plus is cross-platform compatible.
 
 LICENSE TERMS
 =============

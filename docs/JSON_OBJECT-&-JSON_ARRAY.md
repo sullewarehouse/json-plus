@@ -1,6 +1,7 @@
 # JSON_OBJECT and JSON_ARRAY
 
 Class Functions:
+- [MakeRoot](#MakeRoot)
 - [Empty](#Empty)
 - [Count](#Count)
 - [First](#First)
@@ -28,6 +29,9 @@ Class Functions:
 - [Generate](#Generate)
 - [FormatOverride](#FormatOverride)
 
+## MakeRoot
+Create a root object or array node and assign it to the class.
+
 ## Empty
 Returns false if the class does not have a JSON root node, true otherwise.
 
@@ -35,22 +39,22 @@ Returns false if the class does not have a JSON root node, true otherwise.
 Returns the number of items in the object or array.
 
 ## First
-Returns the 1st item in the object or array.
+Returns the 1st item (`JSON_NODE*`) in the object or array.
 
 ## Object
-Get an object using a key (JSON_OBJECT) or index (JSON_ARRAY).
+Get an object using a key (`JSON_OBJECT`) or index (`JSON_ARRAY`).
 
 ## Array
-Get an array using a key (JSON_OBJECT) or index (JSON_ARRAY).
+Get an array using a key (`JSON_OBJECT`) or index (`JSON_ARRAY`).
 
 ## String
-Get a string using a key (JSON_OBJECT) or index (JSON_ARRAY).
+Get a string using a key (`JSON_OBJECT`) or index (`JSON_ARRAY`).
 
 ## Boolean
-Get a boolean using a key (JSON_OBJECT) or index (JSON_ARRAY).
+Get a boolean using a key (`JSON_OBJECT`) or index (`JSON_ARRAY`).
 
 ## Number
-Get a number using a key (JSON_OBJECT) or index (JSON_ARRAY).
+Get a number using a key (`JSON_OBJECT`) or index (`JSON_ARRAY`).
 
 | Function | Description |
 | --- | --- |

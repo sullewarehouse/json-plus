@@ -1925,6 +1925,11 @@ JSON_OBJECT::operator JSON_NODE* () const
 	return this->json_root;
 }
 
+JSON_NODE* JSON_OBJECT::MakeRoot()
+{
+	return this->json_root = JSON_CreateNode(JSON_TYPE::OBJECT, NULL, NULL);
+}
+
 bool JSON_OBJECT::Empty() {
 	if (this->json_root) {
 		return false;
@@ -2451,6 +2456,11 @@ void JSON_ARRAY::operator=(JSON_NODE* root)
 JSON_ARRAY::operator JSON_NODE* () const
 {
 	return this->json_root;
+}
+
+JSON_NODE* JSON_ARRAY::MakeRoot()
+{
+	return this->json_root = JSON_CreateNode(JSON_TYPE::ARRAY, NULL, NULL);
 }
 
 bool JSON_ARRAY::Empty() {

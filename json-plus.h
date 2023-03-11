@@ -198,7 +198,9 @@ namespace json_plus
 		void operator=(JSON_NODE* root);
 		// Assignment operator overload (from object)
 		operator JSON_NODE* () const;
-		// Check if the object exists
+		// Create a root object node and assign it to this object
+		JSON_NODE* MakeRoot();
+		// Check if the root object exists
 		bool Empty();
 		// Get the number of items in the object
 		unsigned long Count();
@@ -297,7 +299,9 @@ namespace json_plus
 		void operator=(JSON_NODE* root);
 		// Assignment operator overload (from array)
 		operator JSON_NODE* () const;
-		// Check if the array exists
+		// Create a root array node and assign it to this array
+		JSON_NODE* MakeRoot();
+		// Check if the root array exists
 		bool Empty();
 		// Get the number of items in the array
 		unsigned long Count();
