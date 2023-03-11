@@ -6,6 +6,26 @@ Everything is contained in the **`json_plus`** namespace.
 
 Check **`example.cpp`** for a detailed example that creates a json string, parses it and prints some details to the console.
 
+LICENSE TERMS
+=============
+```
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+  
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+  
+  (1) If any part of the source code for this software is distributed, then this
+      README file must be included, with this copyright and no-warranty notice
+      unaltered; and any additions, deletions, or changes to the original files
+      must be clearly indicated in accompanying documentation.
+  (2) Permission for use of this software is granted only if the user accepts
+      full responsibility for any undesirable consequences; the authors accept
+      NO LIABILITY for damages of any kind.
+```
+
 ## Functions
 
 - [JSON_Generate](docs/JSON_Generate.md)
@@ -29,33 +49,7 @@ JSON_OBJECT json_file = JSON_Parse(json_string, &context);
 const CHAR* username = json_file.String("username");
 ```
 
-Members:
-- Empty
-- Count
-- First
-- Object
-- Array
-- String
-- Boolean
-- Number
-  - Double
-  - Int
-  - Long
-  - Int64
-  - String
-- Insert
-  - Object
-  - Array
-  - String
-  - Boolean
-  - Number
-    - Double
-    - Int
-    - Long
-    - Int64
-    - String
-- Generate
-- FormatOverride
+[JSON_OBJECT and JSON_ARRAY classes](docs/JSON_OBJECT and JSON_ARRAY.md)
 
 ## JSON resources
 
