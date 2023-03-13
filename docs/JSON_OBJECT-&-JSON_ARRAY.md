@@ -2,6 +2,7 @@
 
 Class Functions:
 - [MakeRoot](#MakeRoot)
+- [Free](#Free)
 - [Empty](#Empty)
 - [Count](#Count)
 - [First](#First)
@@ -28,9 +29,13 @@ Class Functions:
     - [String](#Insert-Number-Class)
 - [Generate](#Generate)
 - [FormatOverride](#FormatOverride)
+- [Parse](#Parse)
 
 ## MakeRoot
 Create a root object or array node and assign it to the class.
+
+## Free
+Free the JSON node tree in the object or array class.
 
 ## Empty
 Returns false if the class does not have a JSON root node, true otherwise.
@@ -89,3 +94,6 @@ Calls the [JSON_Generate](JSON_Generate.md) function.
 
 ## FormatOverride
 Sets the format override string for the object or array. The string is not copied so only pass a string that will still be allocated when you call `JSON_Generate`. See [JSON_Generate](JSON_Generate.md) for details about JSON formatting.
+
+## Parse
+Calls the [JSON_Parse](JSON_Parse.md) function.

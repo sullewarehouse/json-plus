@@ -1915,6 +1915,11 @@ JSON_OBJECT::JSON_OBJECT(JSON_NODE* root) {
 	this->json_root = root;
 }
 
+JSON_OBJECT::JSON_OBJECT(const char* json, JSON_PARSER_CONTEXT* context)
+{
+	this->json_root = JSON_Parse(json, context);
+}
+
 void JSON_OBJECT::operator=(JSON_NODE* root)
 {
 	this->json_root = root;
@@ -1928,6 +1933,12 @@ JSON_OBJECT::operator JSON_NODE* () const
 JSON_NODE* JSON_OBJECT::MakeRoot()
 {
 	return this->json_root = JSON_CreateNode(JSON_TYPE::OBJECT, NULL, NULL);
+}
+
+void JSON_OBJECT::Free()
+{
+	JSON_Free(this->json_root);
+	this->json_root = NULL;
 }
 
 bool JSON_OBJECT::Empty() {
@@ -2436,6 +2447,15 @@ bool JSON_OBJECT::FormatOverride(const char* format)
 	return false;
 }
 
+JSON_NODE* JSON_OBJECT::Parse(const char* json, JSON_PARSER_CONTEXT* context)
+{
+	if (this->json_root) {
+		JSON_Free(this->json_root);
+	}
+
+	return this->json_root = JSON_Parse(json, context);
+}
+
 // ---------------------------- //
 // **   JSON_ARRAY methods   ** //
 // ---------------------------- //
@@ -2446,6 +2466,11 @@ JSON_ARRAY::JSON_ARRAY() {
 
 JSON_ARRAY::JSON_ARRAY(JSON_NODE* root) {
 	this->json_root = root;
+}
+
+JSON_ARRAY::JSON_ARRAY(const char* json, JSON_PARSER_CONTEXT* context)
+{
+	this->json_root = JSON_Parse(json, context);
 }
 
 void JSON_ARRAY::operator=(JSON_NODE* root)
@@ -2461,6 +2486,12 @@ JSON_ARRAY::operator JSON_NODE* () const
 JSON_NODE* JSON_ARRAY::MakeRoot()
 {
 	return this->json_root = JSON_CreateNode(JSON_TYPE::ARRAY, NULL, NULL);
+}
+
+void JSON_ARRAY::Free()
+{
+	JSON_Free(this->json_root);
+	this->json_root = NULL;
 }
 
 bool JSON_ARRAY::Empty() {
@@ -2903,4 +2934,13 @@ bool JSON_ARRAY::FormatOverride(const char* format)
 	}
 
 	return false;
+}
+
+JSON_NODE* JSON_ARRAY::Parse(const char* json, JSON_PARSER_CONTEXT* context)
+{
+	if (this->json_root) {
+		JSON_Free(this->json_root);
+	}
+
+	return this->json_root = JSON_Parse(json, context);
 }

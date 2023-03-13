@@ -52,6 +52,6 @@ const CHAR* username = json_file.String("username");
 
 [JSON_OBJECT and JSON_ARRAY classes](docs/JSON_OBJECT-&-JSON_ARRAY.md)
 
-## JSON resources
+## JSON Resources
 
 - [JSON Specification](https://www.rfc-editor.org/rfc/rfc8259)

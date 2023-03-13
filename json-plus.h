@@ -194,12 +194,16 @@ namespace json_plus
 		JSON_OBJECT();
 		// Standard initializer
 		JSON_OBJECT(JSON_NODE* root);
+		// Parse a JSON string and create a node tree
+		JSON_OBJECT(const char* json, JSON_PARSER_CONTEXT* context);
 		// Assignment operator overload (to object)
 		void operator=(JSON_NODE* root);
 		// Assignment operator overload (from object)
 		operator JSON_NODE* () const;
 		// Create a root object node and assign it to this object
 		JSON_NODE* MakeRoot();
+		// Free JSON node tree
+		void Free();
 		// Check if the root object exists
 		bool Empty();
 		// Get the number of items in the object
@@ -282,6 +286,8 @@ namespace json_plus
 		char* Generate(const char* format);
 		// Format override
 		bool FormatOverride(const char* format);
+		// Parse a JSON string and create a node tree
+		JSON_NODE* Parse(const char* json, JSON_PARSER_CONTEXT* context);
 	};
 
 	// JSON array
@@ -295,12 +301,16 @@ namespace json_plus
 		JSON_ARRAY();
 		// Standard initializer
 		JSON_ARRAY(JSON_NODE* root);
+		// Parse a JSON string and create a node tree
+		JSON_ARRAY(const char* json, JSON_PARSER_CONTEXT* context);
 		// Assignment operator overload (to array)
 		void operator=(JSON_NODE* root);
 		// Assignment operator overload (from array)
 		operator JSON_NODE* () const;
 		// Create a root array node and assign it to this array
 		JSON_NODE* MakeRoot();
+		// Free JSON node tree
+		void Free();
 		// Check if the root array exists
 		bool Empty();
 		// Get the number of items in the array
@@ -383,6 +393,8 @@ namespace json_plus
 		char* Generate(const char* format);
 		// Format override
 		bool FormatOverride(const char* format);
+		// Parse a JSON string and create a node tree
+		JSON_NODE* Parse(const char* json, JSON_PARSER_CONTEXT* context);
 	};
 }
 

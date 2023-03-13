@@ -67,7 +67,7 @@ char* create_json_string()
 		json_string = json_file.Generate(",\n {\n}");
 
 		// Free json resources (node tree)
-		JSON_Free(json_file);
+		json_file.Free();
 	}
 
 	// Return the json string
@@ -84,10 +84,17 @@ int main()
 	// Parser context
 	JSON_PARSER_CONTEXT context;
 
-	// Parse the json string
-	JSON_OBJECT json_file = JSON_Parse(json_string, &context);
+	// JSON_Parse call example
+	//JSON_OBJECT json_file = JSON_Parse(json_string, &context);
+
+	// Object call example
+	//JSON_OBJECT json_file;
+	//json_file.Parse(json_string, &context);
+
+	// Object initialize with parsing
+	JSON_OBJECT json_file(json_string, &context);
 	if (context.errorCode != JSON_ERROR_CODE::NONE) {
-		JSON_Free(json_file);
+		json_file.Free();
 		printf("%s\n", context.errorDescription);
 		return -1;
 	}
@@ -146,7 +153,7 @@ int main()
 	}
 
 	// Free json resources
-	JSON_Free(json_file);
+	json_file.Free();
 
 	// Free json string
 	free(json_string);
