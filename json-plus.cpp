@@ -14,6 +14,7 @@
 #include <setjmp.h>
 #include <stdlib.h>
 #include <memory.h>
+#include <cstring>
 
 #include "json-plus.h"
 using namespace json_plus;
@@ -33,6 +34,7 @@ struct JSON_GENERATOR_CONTEXT
 	char* buffer;
 	size_t bufferLength;
 	size_t index;
+	bool visualEscape;
 	const char* format;
 	long indentation;
 	jmp_buf env;
@@ -151,20 +153,14 @@ void json_GeneratorIndentation(JSON_GENERATOR_CONTEXT* context);
 // ---------------------------------- //
 
 // Append a new character to the JSON string buffer
-// If `format` is true then the function checks formatting parameters
-void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, unsigned long CodePoint, bool format)
+// If `bFormat` is true then the function checks formatting parameters
+void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, unsigned long CodePoint, bool bFormat)
 {
 	unsigned char CharUnits;
-	const char* pFormatString;
-	unsigned long FormatChar;
-	unsigned char FormatCharUnits;
 	unsigned long newLines;
+	const char* pFormat = NULL;
 
-	pFormatString = NULL;
-	FormatChar = 0;
-	FormatCharUnits = 0;
-
-	if ((format) && (context->format != NULL))
+	if ((bFormat) && (context->format))
 	{
 		if (CodePoint == '}') {
 			context->indentation--;
@@ -172,27 +168,24 @@ void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, unsigned long CodePoi
 
 		newLines = 0;
 
-		pFormatString = context->format;
-		while (*pFormatString != '\0')
+		pFormat = context->format;
+		while (*pFormat != '\0')
 		{
-			FormatCharUnits = UTF8_Encoding::GetCharacterUnits(*pFormatString);
-			FormatChar = UTF8_Encoding::Decode(FormatCharUnits, pFormatString);
-
-			if (FormatChar == '\n') {
+			if (*pFormat == '\n') {
 				newLines++;
 			}
-			else if (FormatChar == CodePoint) {
+			else if (*pFormat == CodePoint) {
 				for (unsigned long i = 0; i < newLines; i++) {
 					json_GeneratorAppend(context, '\n', false);
 					json_GeneratorIndentation(context);
 				}
+				pFormat++;
 				break;
 			}
 			else {
 				newLines = 0;
 			}
-
-			pFormatString += FormatCharUnits;
+			pFormat++;
 		}
 	}
 
@@ -214,35 +207,19 @@ void json_GeneratorAppend(JSON_GENERATOR_CONTEXT* context, unsigned long CodePoi
 
 	context->index += UTF8_Encoding::EncodeUnsafe(&context->buffer[context->index], CodePoint);
 
-	if ((format) && (context->format != NULL))
+	if ((bFormat) && (pFormat != NULL))
 	{
 		if (CodePoint == '{') {
 			context->indentation++;
 		}
 
-		if (FormatChar == CodePoint)
+		while ((*pFormat != '\0') && (*pFormat != 'e'))
 		{
-			newLines = 0;
-			pFormatString += FormatCharUnits;
-
-			while (true)
-			{
-				FormatCharUnits = UTF8_Encoding::GetCharacterUnits(*pFormatString);
-				FormatChar = UTF8_Encoding::Decode(FormatCharUnits, pFormatString);
-
-				if (FormatChar == '\n') {
-					newLines++;
-				}
-				else {
-					for (unsigned long i = 0; i < newLines; i++) {
-						json_GeneratorAppend(context, '\n', false);
-						json_GeneratorIndentation(context);
-					}
-					break;
-				}
-
-				pFormatString += FormatCharUnits;
+			json_GeneratorAppend(context, *pFormat, false);
+			if (*pFormat == '\n') {
+				json_GeneratorIndentation(context);
 			}
+			pFormat++;
 		}
 	}
 }
@@ -262,6 +239,33 @@ char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 	unsigned long CodePoint;
 	JSON_NODE* node;
 	const char* format;
+	long p = -1, n = 0;
+	const char* extraChars;
+
+	format = NULL;
+
+	// Look for special 'p' formatting character
+	if (context->format != NULL)
+	{
+		format = context->format;
+
+		while (*format != '\0')
+		{
+			if (*format == 'p') {
+				p = 0;
+				format++;
+
+				// Get number of key-value pairs for a single line
+				while ((*format >= '0') && (*format <= '9')) {
+					p *= 10;
+					p += (*format - '0');
+					format++;
+				}
+				break;
+			}
+			format++;
+		}
+	}
 
 	node = json_node;
 	while (node != NULL)
@@ -282,17 +286,58 @@ char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 				case 0x22: // " quotation mark
 				case 0x5C: // \ reverse solidus
 				case 0x2F: // / solidus
+					json_GeneratorAppend(context, '\\', false);
+					json_GeneratorAppend(context, CodePoint, false);
+					break;
 				case 0x08: // b backspace
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'b', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x0C: // f form feed
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'f', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x0A: // n line feed
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'n', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x0D: // r carriage return
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'r', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x09: // t tab
 					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 't', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				default:
+					json_GeneratorAppend(context, CodePoint, false);
 					break;
 				}
-
-				json_GeneratorAppend(context, CodePoint, false);
 
 				pKey += CharUnits;
 
@@ -352,17 +397,58 @@ char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 				case 0x22: // " quotation mark
 				case 0x5C: // \ reverse solidus
 				case 0x2F: // / solidus
+					json_GeneratorAppend(context, '\\', false);
+					json_GeneratorAppend(context, CodePoint, false);
+					break;
 				case 0x08: // b backspace
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'b', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x0C: // f form feed
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'f', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x0A: // n line feed
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'n', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x0D: // r carriage return
+					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 'r', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				case 0x09: // t tab
 					json_GeneratorAppend(context, '\\', false);
+					if (context->visualEscape) {
+						json_GeneratorAppend(context, 't', false);
+					}
+					else {
+						json_GeneratorAppend(context, CodePoint, false);
+					}
+					break;
 				default:
+					json_GeneratorAppend(context, CodePoint, false);
 					break;
 				}
-
-				json_GeneratorAppend(context, CodePoint, false);
 
 				pValue += CharUnits;
 
@@ -408,8 +494,24 @@ char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 		}
 
 		node = node->next;
-		if (node != NULL) {
+		if (node != NULL)
+		{
 			json_GeneratorAppend(context, ',', true);
+
+			if (p != -1) {
+				n++;
+				if (n >= p) {
+					json_GeneratorAppend(context, '\n', true);
+					json_GeneratorIndentation(context);
+
+					extraChars = format;
+					while ((*extraChars != '\0') && (*extraChars != 'e')) {
+						json_GeneratorAppend(context, *extraChars, true);
+						extraChars++;
+					}
+					n = 0;
+				}
+			}
 		}
 	}
 
@@ -1245,8 +1347,15 @@ char* json_plus::JSON_Generate(JSON_NODE* json_root, const char* format)
 	context.buffer = NULL;
 	context.bufferLength = 0;
 	context.index = 0;
+	context.visualEscape = false;
 	context.format = format;
 	context.indentation = 0;
+
+	if (format != NULL) {
+		if (*format == 'c') {
+			context.visualEscape = true;
+		}
+	}
 
 	if (setjmp(context.env) == 0)
 	{
@@ -1399,6 +1508,10 @@ void json_plus::JSON_Free(JSON_NODE* json_root)
 
 		if (node->key) {
 			free(node->key);
+		}
+
+		if (node->format) {
+			free((void*)node->format);
 		}
 
 		free(node);
@@ -2437,10 +2550,25 @@ char* JSON_OBJECT::Generate(const char* format)
 	return JSON_Generate(this->json_root, format);
 }
 
-bool JSON_OBJECT::FormatOverride(const char* format)
+bool JSON_OBJECT::Format(const char* format)
 {
 	if (this->json_root) {
-		this->json_root->format = format;
+		if (json_root->format) {
+			free((void*)json_root->format);
+		}
+		if (format == NULL) {
+			this->json_root->format = NULL;
+		}
+		else
+		{
+			size_t blockLen = strlen(format) + 1;
+			this->json_root->format = (const char*)malloc(blockLen);
+			if (this->json_root->format == NULL) {
+				return false;
+			}
+			strncpy((char*)this->json_root->format, format, blockLen);
+		}
+
 		return true;
 	}
 
@@ -2926,10 +3054,25 @@ char* JSON_ARRAY::Generate(const char* format)
 	return JSON_Generate(this->json_root, format);
 }
 
-bool JSON_ARRAY::FormatOverride(const char* format)
+bool JSON_ARRAY::Format(const char* format)
 {
 	if (this->json_root) {
-		this->json_root->format = format;
+		if (json_root->format) {
+			free((void*)json_root->format);
+		}
+		if (format == NULL) {
+			this->json_root->format = NULL;
+		}
+		else
+		{
+			size_t blockLen = strlen(format) + 1;
+			this->json_root->format = (const char*)malloc(blockLen);
+			if (this->json_root->format == NULL) {
+				return false;
+			}
+			strncpy((char*)this->json_root->format, format, blockLen);
+		}
+
 		return true;
 	}
 

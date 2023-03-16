@@ -284,8 +284,8 @@ namespace json_plus
 		Insert Insert{ *this };
 		// Create JSON from object
 		char* Generate(const char* format);
-		// Format override
-		bool FormatOverride(const char* format);
+		// Format for the object, this will override the format parameter passed to JSON_Generate
+		bool Format(const char* format);
 		// Parse a JSON string and create a node tree
 		JSON_NODE* Parse(const char* json, JSON_PARSER_CONTEXT* context);
 	};
@@ -391,8 +391,8 @@ namespace json_plus
 		Insert Insert{ *this };
 		// Create JSON from array
 		char* Generate(const char* format);
-		// Format override
-		bool FormatOverride(const char* format);
+		// Format for the array, this will override the format parameter passed to JSON_Generate
+		bool Format(const char* format);
 		// Parse a JSON string and create a node tree
 		JSON_NODE* Parse(const char* json, JSON_PARSER_CONTEXT* context);
 	};

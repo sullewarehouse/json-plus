@@ -50,9 +50,11 @@ char* create_json_string()
 		random_numbers.Insert.Number.Int(9273);
 		random_numbers.Insert.Number.Int(52);
 		random_numbers.Insert.Number.Int(20192);
+		random_numbers.Insert.Number.Int(1726);
 
-		// Override the format so the "random_numbers" array is on a single line
-		random_numbers.FormatOverride("");
+		// Override the format passed to JSON_Generate
+		// Add a space after each ',' character and put 2 key-value pairs on a single line
+		random_numbers.Format(", e p2");
 
 		// Add settings object
 		JSON_OBJECT settings = json_file.Insert.Object("settings");
@@ -64,7 +66,7 @@ char* create_json_string()
 		json_file.Insert.String("type", "accounts");
 
 		// Create the json string from the object
-		json_string = json_file.Generate(",\n {\n}");
+		json_string = json_file.Generate("c ,\ne {\ne \n}");
 
 		// Free json resources (node tree)
 		json_file.Free();
@@ -84,14 +86,14 @@ int main()
 	// Parser context
 	JSON_PARSER_CONTEXT context;
 
-	// JSON_Parse call example
+	// JSON_Parse function call example
 	//JSON_OBJECT json_file = JSON_Parse(json_string, &context);
 
-	// Object call example
+	// Object parsing call example
 	//JSON_OBJECT json_file;
 	//json_file.Parse(json_string, &context);
 
-	// Object initialize with parsing
+	// Object initialize with parsing call
 	JSON_OBJECT json_file(json_string, &context);
 	if (context.errorCode != JSON_ERROR_CODE::NONE) {
 		json_file.Free();

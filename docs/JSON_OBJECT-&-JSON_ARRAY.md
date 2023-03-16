@@ -28,7 +28,7 @@ Class Functions:
     - [Int64](#Insert-Number-Class)
     - [String](#Insert-Number-Class)
 - [Generate](#Generate)
-- [FormatOverride](#FormatOverride)
+- [Format](#Format)
 - [Parse](#Parse)
 
 ## MakeRoot
@@ -92,8 +92,8 @@ Insert an item. `JSON_OBJECT` takes a key as a parameter, `JSON_ARRAY` does not.
 ## Generate
 Calls the [JSON_Generate](JSON_Generate.md) function.
 
-## FormatOverride
-Sets the format override string for the object or array. The string is not copied so only pass a string that will still be allocated when you call `JSON_Generate`. See [JSON_Generate](JSON_Generate.md) for details about JSON formatting.
+## Format
+Sets the format for the object or array, this will override the format parameter passed to JSON_Generate. See [JSON_Generate](JSON_Generate.md) for details about JSON formatting.
 
 ## Parse
 Calls the [JSON_Parse](JSON_Parse.md) function.
