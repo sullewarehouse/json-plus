@@ -128,8 +128,10 @@ namespace json_plus
 
 		// parse string errors:
 
+		STRING_CHARACTERS_MUST_BE_ESCAPED,
+		STRING_FORCED_STRICT_ESCAPING,
+		STRING_UNUSED_ESCAPE_CHARACTER,
 		EXPECTED_DOUBLE_QUOTES_ENCOUNTERED_JSON_END,
-		STRING_SYNTAX_ERROR,
 
 		// parse boolean errors:
 
@@ -141,13 +143,25 @@ namespace json_plus
 	} JSON_ERROR_CODE;
 
 	// JSON parsing context
-	struct JSON_PARSER_CONTEXT
+	class JSON_PARSER_CONTEXT
 	{
+	public:
+		// Default initializer
+		JSON_PARSER_CONTEXT();
+		// Error after JSON_Parse call
 		JSON_ERROR_CODE errorCode;
+		// Error description after JSON_Parse call
 		const char* errorDescription;
-		unsigned long lineNumber;
+		// Force strict string escaping for code editor
+		bool visualEscapeOnly;
+		// Number of characters parsed
 		unsigned long charNumber;
-		const char* errorTokens;
+		// Number of lines parsed
+		unsigned long lineNumber;
+		// Begin index of the error
+		unsigned long beginIndex;
+		// Number of characters from beginIndex
+		unsigned long errorLength;
 	};
 
 	// Create JSON string from node tree

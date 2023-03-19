@@ -27,23 +27,10 @@ using namespace json_plus;
 // Increasing this number may result in faster encoding but will use more memory
 #define JSON_GENERATOR_BUFFER_INCREASE 32
 
-// JSON generator context
-struct JSON_GENERATOR_CONTEXT
-{
-	bool error;
-	char* buffer;
-	size_t bufferLength;
-	size_t index;
-	bool visualEscape;
-	const char* format;
-	long indentation;
-	jmp_buf env;
-};
-
 // JSON error strings
 static const char* JSON_ERROR_STRINGS[] =
 {
-	"None.",
+	"none",
 	"invalid paramter.",
 	"out of memory.",
 	"unrecognized token.",
@@ -54,7 +41,7 @@ static const char* JSON_ERROR_STRINGS[] =
 
 	// parse object errors:
 
-	"object syntax error, key already defined.",
+	"object syntax error, key already defined, expected a ':' token and value.",
 	"object syntax error, key not defined.",
 	"unexpected closing square bracket ']' token, use closing curly bracket '}' instead to close the object.",
 	"expected object closing curly bracket '}' token, encountered end of json instead.",
@@ -70,8 +57,10 @@ static const char* JSON_ERROR_STRINGS[] =
 
 	// parse string errors:
 
-	"expected string closing double quotes '\"' token, encountered end of json instead.",
-	"string syntax error, supported escape characters are \" \\ / b f n r t uXXXX",
+	"quotation mark, reverse solidus, and the control characters(0x00 - 0x1F) must be escaped.",
+	"use (n, r, t, f, b) for control characters (line feed, carriage return, tab, form feed, backspace) respectively.",
+	"quotation mark, reverse solidus, or control character must follow a reverse solidus character.",
+	"expected string closing double quotes \" token, encountered end of json instead.",
 
 	// parse boolean errors:
 
@@ -81,6 +70,31 @@ static const char* JSON_ERROR_STRINGS[] =
 
 	"syntax error, expected a NULL value"
 };
+
+// JSON generator context
+struct JSON_GENERATOR_CONTEXT
+{
+	bool error;
+	char* buffer;
+	size_t bufferLength;
+	size_t index;
+	bool visualEscape;
+	const char* format;
+	long indentation;
+	jmp_buf env;
+};
+
+// JSON parser context initializer
+JSON_PARSER_CONTEXT::JSON_PARSER_CONTEXT()
+{
+	this->errorCode = JSON_ERROR_CODE::NONE;
+	this->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::NONE];
+	this->visualEscapeOnly = false;
+	this->charNumber = 0;
+	this->lineNumber = 0;
+	this->beginIndex = 0;
+	this->errorLength = 0;
+}
 
 // ---------------------------- //
 // **   _JSON_NODE methods   ** //
@@ -578,7 +592,7 @@ getCodePoint:
 	{
 		pJson += CharUnits;
 		context->lineNumber++;
-		context->charNumber = 0;
+		context->charNumber++;
 		goto getCodePoint;
 	}
 
@@ -644,6 +658,10 @@ getCodePoint:
 	{
 		token = JSON_TOKEN::JSON_END;
 	}
+	else
+	{
+		context->charNumber++;
+	}
 
 	*pp_json = (char*)pJson;
 
@@ -681,11 +699,14 @@ char* json_ParseString(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 	while (true)
 	{
+		context->beginIndex = context->charNumber;
+
 		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
 		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
 
 		if (!bEscape)
 		{
+			// Escape character?
 			if (CodePoint == '\\')
 			{
 				bEscape = true;
@@ -693,35 +714,71 @@ char* json_ParseString(char** pp_json, JSON_PARSER_CONTEXT* context)
 				context->charNumber++;
 				continue;
 			}
+
+			// End of string?
 			if (CodePoint == '\"')
 			{
 				pJson += CharUnits;
 				context->charNumber++;
 				break;
 			}
+
+			// All Unicode characters may be placed within the
+			//	 quotation marks, except for the characters that MUST be escaped :
+			// quotation mark, reverse solidus, and the control characters(U + 0000
+			//	 through U + 001F).
+
+			if (((CodePoint >= 0x0000) && (CodePoint <= 0x001F)) ||
+				(CodePoint == '"') || (CodePoint == '\\'))
+			{
+				context->errorCode = JSON_ERROR_CODE::STRING_CHARACTERS_MUST_BE_ESCAPED;
+				context->charNumber++;
+				break;
+			}
 		}
 		else
 		{
-			switch (CodePoint)
-			{
-			case 0x22: // " quotation mark
-			case 0x5C: // \ reverse solidus
-			case 0x2F: // / solidus
-			case 0x08: // b backspace
-			case 0x0C: // f form feed
-			case 0x0A: // n line feed
-			case 0x0D: // r carriage return
-			case 0x09: // t tab
-				bEscape = false;
-				break;
-			default:
-				context->errorCode = JSON_ERROR_CODE::STRING_SYNTAX_ERROR;
-				break;
+			// Convert visual representation of control characters
+			if (CodePoint == 'n') {
+				CodePoint = 0x0A; // line feed
 			}
+			else if (CodePoint == 'r') {
+				CodePoint = 0x0D; // carriage return
+			}
+			else if (CodePoint == 't') {
+				CodePoint = 0x09; // tab
+			}
+			else if (CodePoint == 'f') {
+				CodePoint = 0x0C; // form feed
+			}
+			else if (CodePoint == 'b') {
+				CodePoint = 0x08; // backspace
+			}
+			else
+			{
+				// Force strict string escaping for code editor?
+				if (context->visualEscapeOnly == true)
+				{
+					if ((CodePoint == 0x0A) || (CodePoint == 0x0D) ||
+						(CodePoint == 0x09) || (CodePoint == 0x0C) || (CodePoint == 0x08)) {
+						context->errorCode = JSON_ERROR_CODE::STRING_FORCED_STRICT_ESCAPING;
+						context->charNumber++;
+						break;
+					}
+				}
+				// Must be a quotation mark, reverse solidus, or control character
+				if ((CodePoint > 0x001F) && (CodePoint != '"') && (CodePoint != '\\')) {
+					context->errorCode = JSON_ERROR_CODE::STRING_UNUSED_ESCAPE_CHARACTER;
+					context->charNumber++;
+					break;
+				}
+			}
+			bEscape = false;
 		}
 
 		if (CodePoint == '\0') {
 			context->errorCode = JSON_ERROR_CODE::EXPECTED_DOUBLE_QUOTES_ENCOUNTERED_JSON_END;
+			context->charNumber++;
 			break;
 		}
 
@@ -747,7 +804,6 @@ char* json_ParseString(char** pp_json, JSON_PARSER_CONTEXT* context)
 	}
 
 	if (context->errorCode != JSON_ERROR_CODE::NONE) {
-		context->errorDescription = JSON_ERROR_STRINGS[(int)context->errorCode];
 		if (buffer != NULL) {
 			free(buffer);
 		}
@@ -770,6 +826,7 @@ char* json_ParseNumber(char** pp_json, JSON_PARSER_CONTEXT* context)
 	char* result;
 
 	pJson = *pp_json;
+	context->beginIndex = context->charNumber;
 
 	CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
 	CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
@@ -806,6 +863,8 @@ bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context)
 	bool result;
 
 	pJson = *pp_json;
+	context->beginIndex = context->charNumber;
+
 	result = false;
 
 	CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
@@ -882,7 +941,6 @@ bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context)
 	else
 	{
 		context->errorCode = JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE;
-		context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE];
 	}
 
 	*pp_json = (char*)pJson;
@@ -891,7 +949,6 @@ bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 syntax_error:
 	context->errorCode = JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE;
-	context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE];
 	return false;
 }
 
@@ -903,6 +960,7 @@ void json_ParseNULL(char** pp_json, JSON_PARSER_CONTEXT* context)
 	const char* pJson;
 
 	pJson = *pp_json;
+	context->beginIndex = context->charNumber;
 
 	CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
 	CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
@@ -943,7 +1001,6 @@ void json_ParseNULL(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 syntax_error:
 	context->errorCode = JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_NULL_VALUE;
-	context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_NULL_VALUE];
 }
 
 // Parse a JSON array
@@ -961,6 +1018,7 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 	while (!hasCompleted)
 	{
+		context->beginIndex = context->charNumber;
 		token = json_GetToken((char**)&pJson, context);
 
 		switch (token)
@@ -969,7 +1027,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (node)
 			{
 				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE];
 				break;
 			}
 			else
@@ -978,7 +1035,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (!node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 					break;
 				}
 
@@ -994,17 +1050,14 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			break;
 		case JSON_TOKEN::CURLY_CLOSE:
 			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_CLOSING_CURLY_BRACKET;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_CLOSING_CURLY_BRACKET];
 			break;
 		case JSON_TOKEN::COLON:
 			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_PAIR_COLON_TOKEN;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_PAIR_COLON_TOKEN];
 			break;
 		case JSON_TOKEN::STRING:
 			if (node)
 			{
 				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE];
 				break;
 			}
 			else
@@ -1013,7 +1066,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (!node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 					break;
 				}
 
@@ -1031,7 +1083,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (node)
 			{
 				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE];
 				break;
 			}
 			else
@@ -1040,7 +1091,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (!node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 					break;
 				}
 
@@ -1058,7 +1108,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (node)
 			{
 				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE];
 				break;
 			}
 			else
@@ -1067,7 +1116,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (!node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 					break;
 				}
 
@@ -1092,7 +1140,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (node)
 			{
 				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE];
 				break;
 			}
 			else
@@ -1101,7 +1148,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (!node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 					break;
 				}
 
@@ -1119,7 +1165,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (node)
 			{
 				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE];
 				break;
 			}
 			else
@@ -1128,7 +1173,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (!node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 					break;
 				}
 
@@ -1144,12 +1188,9 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 			break;
 		case JSON_TOKEN::JSON_END:
 			context->errorCode = JSON_ERROR_CODE::EXPECTED_SQUARE_BRACKET_ENCOUNTERED_JSON_END;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::EXPECTED_SQUARE_BRACKET_ENCOUNTERED_JSON_END];
 			break;
 		case JSON_TOKEN::UNRECOGNIZED_TOKEN:
 			context->errorCode = JSON_ERROR_CODE::UNRECOGNIZED_TOKEN;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNRECOGNIZED_TOKEN];
-			context->errorTokens = pJson - 1;
 			break;
 		default:
 			break;
@@ -1160,6 +1201,8 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 		}
 
 		if (context->errorCode != JSON_ERROR_CODE::NONE) {
+			context->errorDescription = JSON_ERROR_STRINGS[(int)context->errorCode];
+			context->errorLength = context->charNumber - context->beginIndex;
 			break;
 		}
 	}
@@ -1186,6 +1229,7 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 	while (!hasCompleted)
 	{
+		context->beginIndex = context->charNumber;
 		token = json_GetToken((char**)&pJson, context);
 
 		switch (token)
@@ -1194,7 +1238,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED];
 				break;
 			}
 			else
@@ -1220,7 +1263,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 				if (node)
 				{
 					context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_ALREADY_DEFINED;
-					context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_ALREADY_DEFINED];
 					break;
 				}
 				else
@@ -1229,7 +1271,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 					if (!node)
 					{
 						context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-						context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 						break;
 					}
 
@@ -1247,7 +1288,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED];
 				break;
 			}
 			else
@@ -1260,7 +1300,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED];
 				break;
 			}
 			else
@@ -1271,7 +1310,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			break;
 		case JSON_TOKEN::ARRAY_CLOSE:
 			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_CLOSING_SQUARE_BRACKET;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_CLOSING_SQUARE_BRACKET];
 			break;
 		case JSON_TOKEN::COMMA:
 			prev_node = node;
@@ -1282,7 +1320,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED];
 				break;
 			}
 			else
@@ -1295,7 +1332,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED];
 				break;
 			}
 			else
@@ -1306,12 +1342,9 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			break;
 		case JSON_TOKEN::JSON_END:
 			context->errorCode = JSON_ERROR_CODE::EXPECTED_CURLY_BRACKET_ENCOUNTERED_JSON_END;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::EXPECTED_CURLY_BRACKET_ENCOUNTERED_JSON_END];
 			break;
 		case JSON_TOKEN::UNRECOGNIZED_TOKEN:
 			context->errorCode = JSON_ERROR_CODE::UNRECOGNIZED_TOKEN;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNRECOGNIZED_TOKEN];
-			context->errorTokens = pJson - 1;
 			break;
 		default:
 			break;
@@ -1322,6 +1355,8 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 		}
 
 		if (context->errorCode != JSON_ERROR_CODE::NONE) {
+			context->errorDescription = JSON_ERROR_STRINGS[(int)context->errorCode];
+			context->errorLength = context->charNumber - context->beginIndex;
 			break;
 		}
 	}
@@ -1388,9 +1423,10 @@ JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context
 		return 0;
 	}
 
-	context->lineNumber = 0;
+	context->lineNumber = 1;
 	context->charNumber = 0;
-	context->errorTokens = 0;
+	context->beginIndex = 0;
+	context->errorLength = 0;
 
 	if (pJson == 0)
 	{
@@ -1400,13 +1436,14 @@ JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context
 	}
 
 	context->errorCode = JSON_ERROR_CODE::NONE;
-	context->errorDescription = 0;
+	context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::NONE];
 
 	root = node = prev_node = 0;
 	hasCompleted = false;
 
 	while (!hasCompleted)
 	{
+		context->beginIndex = context->charNumber;
 		token = json_GetToken((char**)&pJson, context);
 
 		switch (token)
@@ -1416,7 +1453,6 @@ JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 				break;
 			}
 
@@ -1434,7 +1470,6 @@ JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context
 			if (!node)
 			{
 				context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-				context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::OUT_OF_MEMORY];
 				break;
 			}
 
@@ -1452,12 +1487,9 @@ JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context
 			break;
 		case JSON_TOKEN::UNRECOGNIZED_TOKEN:
 			context->errorCode = JSON_ERROR_CODE::UNRECOGNIZED_TOKEN;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNRECOGNIZED_TOKEN];
-			context->errorTokens = pJson - 1;
 			break;
 		default:
 			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_START_TOKEN;
-			context->errorDescription = JSON_ERROR_STRINGS[(int)JSON_ERROR_CODE::UNEXPECTED_START_TOKEN];
 			break;
 		}
 
@@ -1471,6 +1503,8 @@ JSON_NODE* json_plus::JSON_Parse(const char* pJson, JSON_PARSER_CONTEXT* context
 		}
 
 		if (context->errorCode != JSON_ERROR_CODE::NONE) {
+			context->errorDescription = JSON_ERROR_STRINGS[(int)context->errorCode];
+			context->errorLength = context->charNumber - context->beginIndex;
 			break;
 		}
 	}
@@ -2566,7 +2600,7 @@ bool JSON_OBJECT::Format(const char* format)
 			if (this->json_root->format == NULL) {
 				return false;
 			}
-			strncpy((char*)this->json_root->format, format, blockLen);
+			memcpy((void*)this->json_root->format, format, blockLen);
 		}
 
 		return true;
@@ -3070,7 +3104,7 @@ bool JSON_ARRAY::Format(const char* format)
 			if (this->json_root->format == NULL) {
 				return false;
 			}
-			strncpy((char*)this->json_root->format, format, blockLen);
+			memcpy((void*)this->json_root->format, format, blockLen);
 		}
 
 		return true;
