@@ -27,20 +27,40 @@ using namespace json_plus;
 // Increasing this number may result in faster encoding but will use more memory
 #define JSON_GENERATOR_BUFFER_INCREASE 32
 
+// JSON token types
+enum class JSON_TOKEN
+{
+	CURLY_OPEN,
+	CURLY_CLOSE,
+	COLON,
+	STRING,
+	NUMBER,
+	ARRAY_OPEN,
+	ARRAY_CLOSE,
+	COMMA,
+	LITERAL,
+	JSON_END,
+	UNRECOGNIZED_TOKEN
+};
+
 // JSON error strings
 static const char* JSON_ERROR_STRINGS[] =
 {
 	"none",
+
+	// general errors:
+
 	"invalid paramter.",
 	"out of memory.",
-	"unrecognized token.",
 
 	// parse errors:
 
+	"unrecognized token.",
 	"unexpected token, json must start with an object or array; '{' or '[' tokens.",
 
 	// parse object errors:
 
+	"object syntax error, expected a ':' token before value.",
 	"object syntax error, key already defined, expected a ':' token and value.",
 	"object syntax error, key not defined.",
 	"unexpected closing square bracket ']' token, use closing curly bracket '}' instead to close the object.",
@@ -62,13 +82,9 @@ static const char* JSON_ERROR_STRINGS[] =
 	"quotation mark, reverse solidus, or control character must follow a reverse solidus character.",
 	"expected string closing double quotes \" token, encountered end of json instead.",
 
-	// parse boolean errors:
+	// parse literal name errors:
 
-	"syntax error, expected a boolean value true/false",
-
-	// parse null errors:
-
-	"syntax error, expected a NULL value"
+	"invalid literal name, only 'false', 'null' and 'true' are valid (lowercase only)."
 };
 
 // JSON generator context
@@ -542,11 +558,8 @@ char* json_ParseString(char** pp_json, JSON_PARSER_CONTEXT* context);
 // Parse JSON number
 char* json_ParseNumber(char** pp_json, JSON_PARSER_CONTEXT* context);
 
-// Parse JSON boolean
-bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context);
-
-// Parse JSON null
-void json_ParseNULL(char** pp_json, JSON_PARSER_CONTEXT* context);
+// Parse JSON literal
+bool json_ParseLiteral(char** pp_json, JSON_PARSER_CONTEXT* context, JSON_TYPE* pType);
 
 // Parse JSON array
 JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context);
@@ -618,17 +631,9 @@ getCodePoint:
 	{
 		token = JSON_TOKEN::NUMBER;
 	}
-	else if ((CodePoint == 'f') || (CodePoint == 'F'))
+	else if (((CodePoint >= 'A') && (CodePoint <= 'Z')) || ((CodePoint >= 'a') && (CodePoint <= 'z')))
 	{
-		token = JSON_TOKEN::BOOLEAN;
-	}
-	else if ((CodePoint == 't') || (CodePoint == 'T'))
-	{
-		token = JSON_TOKEN::BOOLEAN;
-	}
-	else if ((CodePoint == 'n') || (CodePoint == 'N'))
-	{
-		token = JSON_TOKEN::NULL_TYPE;
+		token = JSON_TOKEN::LITERAL;
 	}
 	else if (CodePoint == '[')
 	{
@@ -854,153 +859,58 @@ char* json_ParseNumber(char** pp_json, JSON_PARSER_CONTEXT* context)
 	return result;
 }
 
-// Parse a JSON boolean, lowercase and uppercase supported
-bool json_ParseBoolean(char** pp_json, JSON_PARSER_CONTEXT* context)
+// JSON literal names are: "false", "null" and "true"
+// The literal names MUST be lowercase.  No other literal names are allowed.
+bool json_ParseLiteral(char** pp_json, JSON_PARSER_CONTEXT* context, JSON_TYPE* pType)
 {
+	const char* pJson;
 	unsigned char CharUnits;
 	unsigned long CodePoint;
-	const char* pJson;
-	bool result;
+	size_t wordLength;
 
 	pJson = *pp_json;
 	context->beginIndex = context->charNumber;
 
-	result = false;
+	wordLength = 0;
+	bool bValue = false;
 
-	CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-	CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-
-	if ((CodePoint == 'f') || (CodePoint == 'F'))
+	while (true)
 	{
-		context->charNumber++;
-		pJson += CharUnits;
 		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
 		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'a') || (CodePoint == 'A'))) {
-			goto syntax_error;
-		}
 
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'l') || (CodePoint == 'L'))) {
-			goto syntax_error;
-		}
+		if (((CodePoint >= 'A') && (CodePoint <= 'Z')) ||
+			((CodePoint >= 'a') && (CodePoint <= 'z')) ||
+			((CodePoint >= '0') && (CodePoint <= '9')) ||
+			(CodePoint == '_'))
+		{
+			wordLength += CharUnits;
 
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 's') || (CodePoint == 'S'))) {
-			goto syntax_error;
+			context->charNumber++;
+			pJson += CharUnits;
 		}
-
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'e') || (CodePoint == 'E'))) {
-			goto syntax_error;
+		else {
+			break;
 		}
-
-		context->charNumber++;
-		pJson += CharUnits;
 	}
-	else if ((CodePoint == 't') || (CodePoint == 'T'))
-	{
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'r') || (CodePoint == 'R'))) {
-			goto syntax_error;
-		}
 
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'u') || (CodePoint == 'U'))) {
-			goto syntax_error;
-		}
-
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'e') || (CodePoint == 'E'))) {
-			goto syntax_error;
-		}
-
-		context->charNumber++;
-		pJson += CharUnits;
-
-		result = true;
+	if (strncmp(*pp_json, "false", wordLength) == 0) {
+		*pType = JSON_TYPE::BOOLEAN;
 	}
-	else
-	{
-		context->errorCode = JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE;
+	else if (strncmp(*pp_json, "true", wordLength) == 0) {
+		*pType = JSON_TYPE::BOOLEAN;
+		bValue = true;
+	}
+	else if (strncmp(*pp_json, "null", wordLength) == 0) {
+		*pType = JSON_TYPE::NULL_TYPE;
+	}
+	else {
+		context->errorCode = JSON_ERROR_CODE::INVALID_LITERAL_NAME;
 	}
 
 	*pp_json = (char*)pJson;
 
-	return result;
-
-syntax_error:
-	context->errorCode = JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE;
-	return false;
-}
-
-// Parse a JSON null value
-void json_ParseNULL(char** pp_json, JSON_PARSER_CONTEXT* context)
-{
-	unsigned char CharUnits;
-	unsigned long CodePoint;
-	const char* pJson;
-
-	pJson = *pp_json;
-	context->beginIndex = context->charNumber;
-
-	CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-	CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-
-	if ((CodePoint == 'n') || (CodePoint == 'N'))
-	{
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'u') || (CodePoint == 'U'))) {
-			goto syntax_error;
-		}
-
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'l') || (CodePoint == 'L'))) {
-			goto syntax_error;
-		}
-
-		context->charNumber++;
-		pJson += CharUnits;
-		CharUnits = UTF8_Encoding::GetCharacterUnits(*pJson);
-		CodePoint = UTF8_Encoding::Decode(CharUnits, pJson);
-		if (!((CodePoint == 'l') || (CodePoint == 'L'))) {
-			goto syntax_error;
-		}
-
-		context->charNumber++;
-		pJson += CharUnits;
-	}
-
-	*pp_json = (char*)pJson;
-
-	return;
-
-syntax_error:
-	context->errorCode = JSON_ERROR_CODE::SYNTAX_ERROR_EXPECTED_NULL_VALUE;
+	return bValue;
 }
 
 // Parse a JSON array
@@ -1023,6 +933,12 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 		switch (token)
 		{
+		case JSON_TOKEN::CURLY_CLOSE:
+			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_CLOSING_CURLY_BRACKET;
+			break;
+		case JSON_TOKEN::COLON:
+			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_PAIR_COLON_TOKEN;
+			break;
 		case JSON_TOKEN::CURLY_OPEN:
 			if (node)
 			{
@@ -1047,12 +963,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 					prev_node->next = node;
 				}
 			}
-			break;
-		case JSON_TOKEN::CURLY_CLOSE:
-			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_CLOSING_CURLY_BRACKET;
-			break;
-		case JSON_TOKEN::COLON:
-			context->errorCode = JSON_ERROR_CODE::UNEXPECTED_PAIR_COLON_TOKEN;
 			break;
 		case JSON_TOKEN::STRING:
 			if (node)
@@ -1104,6 +1014,30 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 				}
 			}
 			break;
+		case JSON_TOKEN::LITERAL:
+			if (node)
+			{
+				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
+				break;
+			}
+			else
+			{
+				node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
+				if (!node)
+				{
+					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
+					break;
+				}
+
+				memset(node, 0, sizeof(JSON_NODE));
+				node->value = (void*)json_ParseLiteral((char**)&pJson, context, &node->type);
+				node->format = NULL;
+
+				if (prev_node) {
+					prev_node->next = node;
+				}
+			}
+			break;
 		case JSON_TOKEN::ARRAY_OPEN:
 			if (node)
 			{
@@ -1135,56 +1069,6 @@ JSON_NODE* json_ParseArray(char** pp_json, JSON_PARSER_CONTEXT* context)
 		case JSON_TOKEN::COMMA:
 			prev_node = node;
 			node = 0;
-			break;
-		case JSON_TOKEN::BOOLEAN:
-			if (node)
-			{
-				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				break;
-			}
-			else
-			{
-				node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
-				if (!node)
-				{
-					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					break;
-				}
-
-				memset(node, 0, sizeof(JSON_NODE));
-				node->type = JSON_TYPE::BOOLEAN;
-				node->value = (void*)json_ParseBoolean((char**)&pJson, context);
-				node->format = NULL;
-
-				if (prev_node) {
-					prev_node->next = node;
-				}
-			}
-			break;
-		case JSON_TOKEN::NULL_TYPE:
-			if (node)
-			{
-				context->errorCode = JSON_ERROR_CODE::UNEXPECTED_ARRAY_VALUE;
-				break;
-			}
-			else
-			{
-				node = (JSON_NODE*)malloc(sizeof(JSON_NODE));
-				if (!node)
-				{
-					context->errorCode = JSON_ERROR_CODE::OUT_OF_MEMORY;
-					break;
-				}
-
-				memset(node, 0, sizeof(JSON_NODE));
-				node->type = JSON_TYPE::NULL_TYPE;
-				json_ParseNULL((char**)&pJson, context);
-				node->format = NULL;
-
-				if (prev_node) {
-					prev_node->next = node;
-				}
-			}
 			break;
 		case JSON_TOKEN::JSON_END:
 			context->errorCode = JSON_ERROR_CODE::EXPECTED_SQUARE_BRACKET_ENCOUNTERED_JSON_END;
@@ -1234,6 +1118,12 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 		switch (token)
 		{
+		case JSON_TOKEN::CURLY_CLOSE:
+			hasCompleted = true;
+			break;
+		case JSON_TOKEN::COLON:
+			isKey = false;
+			break;
 		case JSON_TOKEN::CURLY_OPEN:
 			if (!node)
 			{
@@ -1242,15 +1132,13 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			}
 			else
 			{
+				if (isKey) {
+					context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_EXPECTED_COLON;
+					break;
+				}
 				node->type = JSON_TYPE::OBJECT;
 				node->value = json_ParseObject((char**)&pJson, context);
 			}
-			break;
-		case JSON_TOKEN::CURLY_CLOSE:
-			hasCompleted = true;
-			break;
-		case JSON_TOKEN::COLON:
-			isKey = false;
 			break;
 		case JSON_TOKEN::STRING:
 			if (!isKey)
@@ -1292,8 +1180,27 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			}
 			else
 			{
+				if (isKey) {
+					context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_EXPECTED_COLON;
+					break;
+				}
 				node->type = JSON_TYPE::NUMBER;
 				node->value = json_ParseNumber((char**)&pJson, context);
+			}
+			break;
+		case JSON_TOKEN::LITERAL:
+			if (!node)
+			{
+				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
+				break;
+			}
+			else
+			{
+				if (isKey) {
+					context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_EXPECTED_COLON;
+					break;
+				}
+				node->value = (void*)json_ParseLiteral((char**)&pJson, context, &node->type);
 			}
 			break;
 		case JSON_TOKEN::ARRAY_OPEN:
@@ -1304,6 +1211,10 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			}
 			else
 			{
+				if (isKey) {
+					context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_EXPECTED_COLON;
+					break;
+				}
 				node->type = JSON_TYPE::ARRAY;
 				node->value = json_ParseArray((char**)&pJson, context);
 			}
@@ -1315,30 +1226,6 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 			prev_node = node;
 			node = 0;
 			isKey = true;
-			break;
-		case JSON_TOKEN::BOOLEAN:
-			if (!node)
-			{
-				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				break;
-			}
-			else
-			{
-				node->type = JSON_TYPE::BOOLEAN;
-				node->value = (void*)json_ParseBoolean((char**)&pJson, context);
-			}
-			break;
-		case JSON_TOKEN::NULL_TYPE:
-			if (!node)
-			{
-				context->errorCode = JSON_ERROR_CODE::OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED;
-				break;
-			}
-			else
-			{
-				node->type = JSON_TYPE::NULL_TYPE;
-				json_ParseNULL((char**)&pJson, context);
-			}
 			break;
 		case JSON_TOKEN::JSON_END:
 			context->errorCode = JSON_ERROR_CODE::EXPECTED_CURLY_BRACKET_ENCOUNTERED_JSON_END;

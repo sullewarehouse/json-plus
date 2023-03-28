@@ -43,23 +43,6 @@ namespace json_plus
 		long CompareStringsInsensitive(const char* String1, const char* String2);
 	}
 
-	// JSON token types
-	enum class JSON_TOKEN
-	{
-		CURLY_OPEN,
-		CURLY_CLOSE,
-		COLON,
-		STRING,
-		NUMBER,
-		ARRAY_OPEN,
-		ARRAY_CLOSE,
-		COMMA,
-		BOOLEAN,
-		NULL_TYPE,
-		JSON_END,
-		UNRECOGNIZED_TOKEN
-	};
-
 	// JSON element types
 	enum class JSON_TYPE
 	{
@@ -102,16 +85,20 @@ namespace json_plus
 	// JSON error codes
 	typedef enum class _JSON_ERROR_CODE {
 		NONE,
+
+		// general errors:
+
 		INVALID_PARAMETER,
 		OUT_OF_MEMORY,
-		UNRECOGNIZED_TOKEN,
 
 		// parse errors:
 
+		UNRECOGNIZED_TOKEN,
 		UNEXPECTED_START_TOKEN,
 
 		// parse object errors:
 
+		OBJECT_SYNTAX_ERROR_EXPECTED_COLON,
 		OBJECT_SYNTAX_ERROR_KEY_ALREADY_DEFINED,
 		OBJECT_SYNTAX_ERROR_KEY_NOT_DEFINED,
 		UNEXPECTED_CLOSING_SQUARE_BRACKET,
@@ -133,13 +120,9 @@ namespace json_plus
 		STRING_UNUSED_ESCAPE_CHARACTER,
 		EXPECTED_DOUBLE_QUOTES_ENCOUNTERED_JSON_END,
 
-		// parse boolean errors:
+		// parse literal name errors:
 
-		SYNTAX_ERROR_EXPECTED_BOOLEAN_VALUE,
-
-		// parse null errors:
-
-		SYNTAX_ERROR_EXPECTED_NULL_VALUE
+		INVALID_LITERAL_NAME,
 	} JSON_ERROR_CODE;
 
 	// JSON parsing context
@@ -152,7 +135,7 @@ namespace json_plus
 		JSON_ERROR_CODE errorCode;
 		// Error description after JSON_Parse call
 		const char* errorDescription;
-		// Force strict string escaping for code editor
+		// Force strict string escaping for code editors
 		bool visualEscapeOnly;
 		// Number of characters parsed
 		unsigned long charNumber;
