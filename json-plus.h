@@ -279,6 +279,10 @@ namespace json_plus
 		};
 		// Insert a JSON object, array or key-value pair
 		Insert Insert{ *this };
+		// Delete a key-value pair using a key
+		bool Delete(const char* key);
+		// Delete a key-value pair using a reference
+		bool Delete(JSON_NODE* reference);
 		// Create JSON from object
 		char* Generate(const char* format);
 		// Format for the object, this will override the format parameter passed to JSON_Generate
@@ -386,6 +390,10 @@ namespace json_plus
 		};
 		// Insert a JSON object, array or key-value pair
 		Insert Insert{ *this };
+		// Delete a key-value pair using a index
+		bool Delete(unsigned long i);
+		// Delete a key-value pair using a reference
+		bool Delete(JSON_NODE* reference);
 		// Create JSON from array
 		char* Generate(const char* format);
 		// Format for the array, this will override the format parameter passed to JSON_Generate

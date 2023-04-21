@@ -52,6 +52,9 @@ char* create_json_string()
 		random_numbers.Insert.Number.Int(20192);
 		random_numbers.Insert.Number.Int(1726);
 
+		// Items can also be deleted from an object or array
+		random_numbers.Delete(0UL);
+
 		// Override the format passed to JSON_Generate
 		// Add a space after each ',' character and put 2 key-value pairs on a single line
 		random_numbers.Format(", e p2");

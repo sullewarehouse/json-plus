@@ -27,6 +27,7 @@ Class Functions:
     - [Long](#Insert-Number-Class)
     - [Int64](#Insert-Number-Class)
     - [String](#Insert-Number-Class)
+- [Delete](#Delete)
 - [Generate](#Generate)
 - [Format](#Format)
 - [Parse](#Parse)
@@ -88,6 +89,9 @@ Insert an item. `JSON_OBJECT` takes a key as a parameter, `JSON_ARRAY` does not.
 | Long | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
 | Int64 | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
 | String | Returns the created `JSON_NODE*` pointer that contains the key-value pair |
+
+## Delete
+Delete an item from a JSON_OBJECT or JSON_ARRAY using a key, index number or reference.
 
 ## Generate
 Calls the [JSON_Generate](JSON_Generate.md) function.

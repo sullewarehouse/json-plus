@@ -170,6 +170,34 @@ long long _JSON_NODE::Int64()
 	return 0;
 }
 
+void json_free_node(JSON_NODE* node)
+{
+	if (node->type == JSON_TYPE::OBJECT) {
+		JSON_Free((JSON_NODE*)node->value);
+	}
+	else if (node->type == JSON_TYPE::ARRAY) {
+		JSON_Free((JSON_NODE*)node->value);
+	}
+	else
+	{
+		if (node->type != JSON_TYPE::BOOLEAN) {
+			if (node->value) {
+				free(node->value);
+			}
+		}
+	}
+
+	if (node->key) {
+		free(node->key);
+	}
+
+	if (node->format) {
+		free((void*)node->format);
+	}
+
+	free(node);
+}
+
 // ------------------------ //
 // **   JSON generator   ** //
 // ------------------------ //
@@ -315,7 +343,6 @@ char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 				{
 				case 0x22: // " quotation mark
 				case 0x5C: // \ reverse solidus
-				case 0x2F: // / solidus
 					json_GeneratorAppend(context, '\\', false);
 					json_GeneratorAppend(context, CodePoint, false);
 					break;
@@ -426,7 +453,6 @@ char* json_GenerateText(JSON_NODE* json_node, JSON_GENERATOR_CONTEXT* context)
 				{
 				case 0x22: // " quotation mark
 				case 0x5C: // \ reverse solidus
-				case 0x2F: // / solidus
 					json_GeneratorAppend(context, '\\', false);
 					json_GeneratorAppend(context, CodePoint, false);
 					break;
@@ -605,6 +631,13 @@ getCodePoint:
 	{
 		pJson += CharUnits;
 		context->lineNumber++;
+		context->charNumber++;
+		goto getCodePoint;
+	}
+
+	if (CodePoint == '\r')
+	{
+		pJson += CharUnits;
 		context->charNumber++;
 		goto getCodePoint;
 	}
@@ -1259,7 +1292,7 @@ JSON_NODE* json_ParseObject(char** pp_json, JSON_PARSER_CONTEXT* context)
 
 char* json_plus::JSON_Generate(JSON_NODE* json_root, const char* format)
 {
-	JSON_GENERATOR_CONTEXT context;
+	JSON_GENERATOR_CONTEXT context = { 0 };
 
 	if (json_root == NULL) {
 		return NULL;
@@ -2466,6 +2499,72 @@ JSON_NODE* JSON_OBJECT::Insert::Number::String(const char* key, const char* valu
 	return node;
 }
 
+bool JSON_OBJECT::Delete(const char* key)
+{
+	JSON_NODE* prev_node, * node;
+
+	prev_node = node = NULL;
+
+	node = (JSON_NODE*)this->json_root->value;
+	if (UTF8_Encoding::CompareStrings(node->key, key) == 0)
+	{
+		this->json_root->value = node->next;
+		json_free_node(node);
+		return true;
+	}
+	else
+	{
+		prev_node = node;
+		node = node->next;
+
+		while (node != NULL)
+		{
+			if (UTF8_Encoding::CompareStrings(node->key, key) == 0)
+			{
+				prev_node->next = node->next;
+				json_free_node(node);
+				return true;
+			}
+			prev_node = node;
+			node = node->next;
+		}
+	}
+	return false;
+}
+
+bool JSON_OBJECT::Delete(JSON_NODE* reference)
+{
+	JSON_NODE* prev_node, * node;
+
+	prev_node = node = NULL;
+
+	node = (JSON_NODE*)this->json_root->value;
+	if (node == reference)
+	{
+		this->json_root->value = node->next;
+		json_free_node(node);
+		return true;
+	}
+	else
+	{
+		prev_node = node;
+		node = node->next;
+
+		while (node != NULL)
+		{
+			if (node == reference)
+			{
+				prev_node->next = node->next;
+				json_free_node(node);
+				return true;
+			}
+			prev_node = node;
+			node = node->next;
+		}
+	}
+	return false;
+}
+
 char* JSON_OBJECT::Generate(const char* format)
 {
 	return JSON_Generate(this->json_root, format);
@@ -2968,6 +3067,74 @@ JSON_NODE* JSON_ARRAY::Insert::Number::String(const char* value)
 	}
 
 	return node;
+}
+
+bool JSON_ARRAY::Delete(unsigned long i)
+{
+	unsigned long index;
+	JSON_NODE* prev_node, * node;
+
+	prev_node = node = NULL;
+
+	node = (JSON_NODE*)this->json_root->value;
+	if (i == 0)
+	{
+		this->json_root->value = node->next;
+		json_free_node(node);
+		return true;
+	}
+	else
+	{
+		index = 1;
+		prev_node = node;
+		node = node->next;
+
+		while (node != NULL)
+		{
+			if (index == i)
+			{
+				prev_node->next = node->next;
+				json_free_node(node);
+				return true;
+			}
+			prev_node = node;
+			node = node->next;
+		}
+	}
+	return false;
+}
+
+bool JSON_ARRAY::Delete(JSON_NODE* reference)
+{
+	JSON_NODE* prev_node, * node;
+
+	prev_node = node = NULL;
+
+	node = (JSON_NODE*)this->json_root->value;
+	if (node == reference)
+	{
+		this->json_root->value = node->next;
+		json_free_node(node);
+		return true;
+	}
+	else
+	{
+		prev_node = node;
+		node = node->next;
+
+		while (node != NULL)
+		{
+			if (node == reference)
+			{
+				prev_node->next = node->next;
+				json_free_node(node);
+				return true;
+			}
+			prev_node = node;
+			node = node->next;
+		}
+	}
+	return false;
 }
 
 char* JSON_ARRAY::Generate(const char* format)
