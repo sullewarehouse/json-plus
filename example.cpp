@@ -129,7 +129,7 @@ int main()
 		}
 
 		// Print members
-		printf("type: %s\ncount: %d\nencrypted: %s\npath: %s\n", type, count, encrypted ? "true" : "false", path);
+		printf("type: %s\ncount: %ld\nencrypted: %s\npath: %s\n", type, count, encrypted ? "true" : "false", path);
 
 		// Get random_numbers array from the object
 		JSON_ARRAY random_numbers = json_file.Array("random_numbers");

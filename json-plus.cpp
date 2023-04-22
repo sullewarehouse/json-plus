@@ -2413,7 +2413,7 @@ JSON_NODE* JSON_OBJECT::Insert::Number::Long(const char* key, long value)
 		}
 
 		UTF8_Encoding::StringCopy(number_key, keyLength, key);
-		snprintf(number_value, 32, "%d", value);
+		snprintf(number_value, 32, "%ld", value);
 
 		node->key = number_key;
 		node->value = number_value;
@@ -3001,7 +3001,7 @@ JSON_NODE* JSON_ARRAY::Insert::Number::Long(long value)
 			return NULL;
 		}
 
-		snprintf(number_value, 32, "%d", value);
+		snprintf(number_value, 32, "%ld", value);
 
 		node->key = NULL;
 		node->value = number_value;

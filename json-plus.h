@@ -14,6 +14,8 @@
 #ifndef JSON_PLUS_H
 #define JSON_PLUS_H
 
+#include <cstdlib>
+
 namespace json_plus
 {
 	// UTF8 functions
