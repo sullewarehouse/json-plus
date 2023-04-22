@@ -8,6 +8,7 @@
 // 
 // Description:
 //     The header file for the json_plus namespace.
+//     https://github.com/sullewarehouse/json-plus
 //
 
 #ifndef JSON_PLUS_H

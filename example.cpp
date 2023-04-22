@@ -8,6 +8,7 @@
 // 
 // Description:
 //     The example program for using json-plus.
+//     https://github.com/sullewarehouse/json-plus
 //
 
 #include <iostream>
@@ -21,6 +22,9 @@ char* create_json_string()
 {
 	JSON_OBJECT json_file;
 	char* json_string;
+
+	// Delete success
+	bool success;
 
 	// Default return value
 	json_string = NULL;
@@ -44,6 +48,12 @@ char* create_json_string()
 		user_tom.Insert.Number.Double("balance", 30.5f);
 		user_tom.Insert.String("username", "Tom");
 
+		// Add a bool value
+		json_file.Insert.Boolean("present", true);
+
+		// Items can be deleted from an object using a key or reference
+		success = json_file.Delete("present");
+
 		// Add random number array
 		JSON_ARRAY random_numbers = json_file.Insert.Array("random_numbers");
 		random_numbers.Insert.Number.Int(463);
@@ -52,8 +62,8 @@ char* create_json_string()
 		random_numbers.Insert.Number.Int(20192);
 		random_numbers.Insert.Number.Int(1726);
 
-		// Items can also be deleted from an object or array
-		random_numbers.Delete(0UL);
+		// Items can be deleted from an array using a index or reference
+		success = random_numbers.Delete(2UL);
 
 		// Override the format passed to JSON_Generate
 		// Add a space after each ',' character and put 2 key-value pairs on a single line
@@ -140,6 +150,10 @@ int main()
 				}
 			}
 		}
+
+		// Attempt to print deleted member
+		bool present = json_file.Boolean("present");
+		printf("present: %s\n", present ? "true" : "false");
 
 		// Get users array from the object
 		JSON_ARRAY users = json_file.Array("users");

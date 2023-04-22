@@ -8,6 +8,7 @@
 // 
 // Description:
 //     The source file for the json_plus namespace.
+//     https://github.com/sullewarehouse/json-plus
 //
 
 #include <stdio.h>
@@ -3099,6 +3100,7 @@ bool JSON_ARRAY::Delete(unsigned long i)
 			}
 			prev_node = node;
 			node = node->next;
+			index++;
 		}
 	}
 	return false;
