@@ -1988,9 +1988,10 @@ JSON_OBJECT::JSON_OBJECT(const char* json, JSON_PARSER_CONTEXT* context)
 	this->json_root = JSON_Parse(json, context);
 }
 
-void JSON_OBJECT::operator=(JSON_NODE* root)
+JSON_OBJECT& JSON_OBJECT::operator=(const JSON_OBJECT& other)
 {
-	this->json_root = root;
+	this->json_root = other.json_root;
+	return *this;
 }
 
 JSON_OBJECT::operator JSON_NODE* () const
@@ -2622,9 +2623,10 @@ JSON_ARRAY::JSON_ARRAY(const char* json, JSON_PARSER_CONTEXT* context)
 	this->json_root = JSON_Parse(json, context);
 }
 
-void JSON_ARRAY::operator=(JSON_NODE* root)
+JSON_ARRAY& JSON_ARRAY::operator=(const JSON_ARRAY& other)
 {
-	this->json_root = root;
+	this->json_root = other.json_root;
+	return *this;
 }
 
 JSON_ARRAY::operator JSON_NODE* () const

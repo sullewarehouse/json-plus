@@ -196,9 +196,9 @@ namespace json_plus
 		JSON_OBJECT(JSON_NODE* root);
 		// Parse a JSON string and create a node tree
 		JSON_OBJECT(const char* json, JSON_PARSER_CONTEXT* context);
-		// Assignment operator overload (to object)
-		void operator=(JSON_NODE* root);
-		// Assignment operator overload (from object)
+		// Assignment operator overload
+		JSON_OBJECT& operator=(const JSON_OBJECT& other);
+		// Assigment operator overload
 		operator JSON_NODE* () const;
 		// Create a root object node and assign it to this object
 		JSON_NODE* MakeRoot();
@@ -307,9 +307,9 @@ namespace json_plus
 		JSON_ARRAY(JSON_NODE* root);
 		// Parse a JSON string and create a node tree
 		JSON_ARRAY(const char* json, JSON_PARSER_CONTEXT* context);
-		// Assignment operator overload (to array)
-		void operator=(JSON_NODE* root);
-		// Assignment operator overload (from array)
+		// Assignment operator overload
+		JSON_ARRAY& operator=(const JSON_ARRAY& other);
+		// Assignment operator overload
 		operator JSON_NODE* () const;
 		// Create a root array node and assign it to this array
 		JSON_NODE* MakeRoot();
